@@ -26,7 +26,7 @@ Ensure you have [Rust 2024+](https://www.rust-lang.org/tools/install) installed.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/bzt-rs.git
+git clone https://github.com/py-centric/bzt-rs.git
 cd bzt-rs
 
 # Build the release binary

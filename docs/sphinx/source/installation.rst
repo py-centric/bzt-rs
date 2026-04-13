@@ -24,7 +24,7 @@ To build bzt-rs from source, follow these steps:
 1. **Clone the Repository**:
    .. code-block:: bash
 
-      git clone https://github.com/v/bzt-rs.git
+      git clone https://github.com/py-centric/bzt-rs.git
       cd bzt-rs
 
 
