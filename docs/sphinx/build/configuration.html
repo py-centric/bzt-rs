@@ -1,0 +1,205 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration &mdash; bzt-rs 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Advanced Features" href="advanced_features.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            bzt-rs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#format-support">Format Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#schema-normalization">Schema Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-configuration-parameters">Core Configuration Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#taurus-yaml-standard">Taurus YAML (Standard)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#native-shorthand-toml">Native Shorthand (TOML)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-configuration">Advanced Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">bzt-rs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<p>bzt-rs provides a flexible configuration system that supports standard
+Taurus YAML and a simplified native Shorthand syntax available in YAML,
+JSON, or TOML.</p>
+<section id="format-support">
+<h2>Format Support<a class="headerlink" href="#format-support" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>YAML</strong>: Primary format for Taurus-compatible configurations (.yaml, .yml).</p></li>
+<li><p><strong>JSON</strong>: Full support for both standard and shorthand schemas (.json).</p></li>
+<li><p><strong>TOML</strong>: Native shorthand syntax optimized for readability (.toml).</p></li>
+</ul>
+</section>
+<section id="schema-normalization">
+<h2>Schema Normalization<a class="headerlink" href="#schema-normalization" title="Link to this heading"></a></h2>
+<p>Regardless of the input format, bzt-rs unifies all configurations into a
+canonical internal representation. This means you can mix and match
+standard Taurus structures with simplified shorthand where appropriate.</p>
+</section>
+<section id="core-configuration-parameters">
+<h2>Core Configuration Parameters<a class="headerlink" href="#core-configuration-parameters" title="Link to this heading"></a></h2>
+<p>The configuration consists of two primary sections: <cite>execution</cite> and <cite>scenarios</cite>.</p>
+<p>### The <cite>execution</cite> Block
+Defines “how” the load should be generated:</p>
+<ul class="simple">
+<li><p><strong>concurrency</strong>: The number of concurrent users (threads) to launch.</p></li>
+<li><p><strong>ramp-up</strong>: Time to reach target concurrency (e.g., <cite>10s</cite>, <cite>1m</cite>).</p></li>
+<li><p><strong>hold-for</strong>: Total duration of the test (e.g., <cite>5m</cite>, <cite>1h</cite>).</p></li>
+<li><p><strong>iterations</strong>: Number of times each user should execute the scenario.</p></li>
+<li><p><strong>scenario</strong>: Name of the scenario to execute from the <cite>scenarios</cite> block.</p></li>
+</ul>
+<p>### The <cite>scenarios</cite> Block
+Defines “what” the load should do:</p>
+<ul class="simple">
+<li><p><strong>requests</strong>: A list of URLs or request objects.</p></li>
+<li><p><strong>data-sources</strong>: CSV files for parameterization.</p></li>
+<li><p><strong>variables</strong>: Static or dynamic context for the scenario.</p></li>
+<li><p><strong>think-time</strong>: Delay between requests.</p></li>
+</ul>
+</section>
+<section id="taurus-yaml-standard">
+<h2>Taurus YAML (Standard)<a class="headerlink" href="#taurus-yaml-standard" title="Link to this heading"></a></h2>
+<p>A complete, standard Taurus YAML configuration example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">ramp-up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">  </span><span class="nt">hold-for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">  </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">standard-test</span>
+
+<span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">standard-test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://example.com/api/login</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;{&quot;username&quot;:</span><span class="nv"> </span><span class="s">&quot;admin&quot;}&#39;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://example.com/api/profile</span>
+</pre></div>
+</div>
+</section>
+<section id="native-shorthand-toml">
+<h2>Native Shorthand (TOML)<a class="headerlink" href="#native-shorthand-toml" title="Link to this heading"></a></h2>
+<p>A more compact shorthand syntax using TOML:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[execution]</span>
+<span class="n">concurrency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+<span class="n">ramp-up</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;30s&quot;</span>
+<span class="n">hold-for</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;5m&quot;</span>
+<span class="n">scenario</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;shorthand-test&quot;</span>
+
+<span class="k">[scenarios.shorthand-test]</span>
+<span class="n">requests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;http://example.com/api/login&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;http://example.com/api/profile&quot;</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-configuration">
+<h2>Advanced Configuration<a class="headerlink" href="#advanced-configuration" title="Link to this heading"></a></h2>
+<p>See the <a class="reference internal" href="advanced_features.html"><span class="doc">Advanced Features</span></a> section for details on extraction,
+assertions, and control flow.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_features.html" class="btn btn-neutral float-right" title="Advanced Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

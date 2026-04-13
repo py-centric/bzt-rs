@@ -1,0 +1,208 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Features &mdash; bzt-rs 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Distributed Mode" href="distributed_mode.html" />
+    <link rel="prev" title="Configuration" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            bzt-rs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-data-macros">Dynamic Data &amp; Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-sources-csv">Data Sources (CSV)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#variable-extraction-interpolation">Variable Extraction &amp; Interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#control-flow-conditions-loops">Control Flow: Conditions &amp; Loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sla-pass-fail-criteria">SLA &amp; Pass/Fail Criteria</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">bzt-rs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Advanced Features</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/advanced_features.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="advanced-features">
+<h1>Advanced Features<a class="headerlink" href="#advanced-features" title="Link to this heading"></a></h1>
+<p>bzt-rs provides robust mechanisms for building complex, realistic
+performance tests that mirror real-world user behavior.</p>
+<section id="dynamic-data-macros">
+<h2>Dynamic Data &amp; Macros<a class="headerlink" href="#dynamic-data-macros" title="Link to this heading"></a></h2>
+<p>Inject dynamic, randomized data into your requests using built-in macros:</p>
+<ul class="simple">
+<li><p><strong>${faker.email}</strong>: Generates a random email address.</p></li>
+<li><p><strong>${faker.name}</strong>: Generates a random full name.</p></li>
+<li><p><strong>${uuid}</strong>: Generates a unique UUID v4.</p></li>
+<li><p><strong>${env.MY_VAR}</strong>: Injects the value of the <cite>MY_VAR</cite> environment variable.</p></li>
+</ul>
+</section>
+<section id="data-sources-csv">
+<h2>Data Sources (CSV)<a class="headerlink" href="#data-sources-csv" title="Link to this heading"></a></h2>
+<p>Iterate through external data files for parameterization.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">csv-test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">data-sources</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users.csv</span>
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/login</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;{&quot;user&quot;:</span><span class="nv"> </span><span class="s">&quot;${username}&quot;,</span><span class="nv"> </span><span class="s">&quot;pass&quot;:</span><span class="nv"> </span><span class="s">&quot;${password}&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="variable-extraction-interpolation">
+<h2>Variable Extraction &amp; Interpolation<a class="headerlink" href="#variable-extraction-interpolation" title="Link to this heading"></a></h2>
+<p>Build stateful user journeys by extracting data from responses:</p>
+<ul>
+<li><p><strong>JSONPath Extraction</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">extract-jsonpath</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.access_token</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Regex Extraction</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">extract-regexp</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;id=([0-9]+)&quot;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Use extracted variables in any subsequent request field:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">requests</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/profile/${token}</span>
+<span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">X-User-ID</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${id}</span>
+</pre></div>
+</div>
+</section>
+<section id="control-flow-conditions-loops">
+<h2>Control Flow: Conditions &amp; Loops<a class="headerlink" href="#control-flow-conditions-loops" title="Link to this heading"></a></h2>
+<ul>
+<li><p><strong>Conditional Execution (`if`)</strong>:
+Execute a request only if a condition is met.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">requests</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/special</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${id}&quot;</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Polling Loops (`loop`)</strong>:
+Repeatedly execute a request until a condition is satisfied.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">requests</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/status</span>
+<span class="w">  </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${status}&quot;</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== &quot;processing&quot;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="sla-pass-fail-criteria">
+<h2>SLA &amp; Pass/Fail Criteria<a class="headerlink" href="#sla-pass-fail-criteria" title="Link to this heading"></a></h2>
+<p>Define success thresholds for your load test.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">reporting</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passfail</span>
+<span class="w">  </span><span class="nt">criteria</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-rt of scenario &gt; 500ms for 10s, continue as failed</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail of scenario &gt; 1% for 30s, stop as failed</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="distributed_mode.html" class="btn btn-neutral float-right" title="Distributed Mode" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

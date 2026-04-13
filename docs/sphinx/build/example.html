@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detailed Example: E-Commerce User Journey &mdash; bzt-rs 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api_reference.html" />
+    <link rel="prev" title="Distributed Mode" href="distributed_mode.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            bzt-rs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Detailed Example: E-Commerce User Journey</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-scenario">The Scenario</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-configuration-ecommerce-test-yaml">Full Configuration (<cite>ecommerce_test.yaml</cite>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-by-step-breakdown">Step-by-Step Breakdown</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">bzt-rs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Detailed Example: E-Commerce User Journey</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/example.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="detailed-example-e-commerce-user-journey">
+<h1>Detailed Example: E-Commerce User Journey<a class="headerlink" href="#detailed-example-e-commerce-user-journey" title="Link to this heading"></a></h1>
+<p>This example demonstrates a realistic load test scenario for an e-commerce
+platform, covering authentication, data parameterization, stateful
+extraction, and complex control flow.</p>
+<section id="the-scenario">
+<h2>The Scenario<a class="headerlink" href="#the-scenario" title="Link to this heading"></a></h2>
+<p>A virtual user will:</p>
+<ol class="arabic simple">
+<li><p>Load credentials from a CSV file.</p></li>
+<li><p>Authenticate and extract a session token.</p></li>
+<li><p>Search for a product using a randomized search term.</p></li>
+<li><p>Add the product to their cart if it exists.</p></li>
+<li><p>Poll the order status until it is confirmed.</p></li>
+</ol>
+</section>
+<section id="full-configuration-ecommerce-test-yaml">
+<h2>Full Configuration (<cite>ecommerce_test.yaml</cite>)<a class="headerlink" href="#full-configuration-ecommerce-test-yaml" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w">           </span><span class="c1"># Scale to 50 concurrent users</span>
+<span class="w">  </span><span class="nt">ramp-up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span><span class="w">               </span><span class="c1"># Reach target concurrency over 1 minute</span>
+<span class="w">  </span><span class="nt">hold-for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span><span class="w">              </span><span class="c1"># Maintain load for 5 minutes</span>
+<span class="w">  </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkout-flow</span>
+
+<span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">checkout-flow</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">data-sources</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users.csv</span><span class="w">             </span><span class="c1"># CSV file containing &#39;username&#39; and &#39;password&#39;</span>
+
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="c1"># Step 1: Authentication</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://api.shop.com/v1/login</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">login_request</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${username}&quot;</span>
+<span class="w">        </span><span class="nt">pass</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${password}&quot;</span>
+<span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">authToken</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.session.token</span>
+<span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">200</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http-code</span>
+
+<span class="w">    </span><span class="c1"># Step 2: Product Search with Macro</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://api.shop.com/v1/search?q=${faker.word}</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
+<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search_products</span>
+<span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
+<span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">productId</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.results[0].id</span>
+
+<span class="w">    </span><span class="c1"># Step 3: Conditional Add to Cart</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://api.shop.com/v1/cart/add</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">add_to_cart</span>
+<span class="w">      </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${productId}&quot;</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">  </span><span class="c1"># Only add to cart if a product was found</span>
+<span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">product_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${productId}&quot;</span>
+<span class="w">        </span><span class="nt">quantity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+
+<span class="w">    </span><span class="c1"># Step 4: Polling for Order Status</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://api.shop.com/v1/orders/status</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
+<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">poll_order_status</span>
+<span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
+<span class="w">      </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${orderStatus}&quot;</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== &quot;processing&quot;</span>
+<span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">orderStatus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.status</span>
+
+<span class="nt">reporting</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">junit-xml</span>
+<span class="w">  </span><span class="nt">filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test_results.xml</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+</pre></div>
+</div>
+</section>
+<section id="step-by-step-breakdown">
+<h2>Step-by-Step Breakdown<a class="headerlink" href="#step-by-step-breakdown" title="Link to this heading"></a></h2>
+<p>### 1. Execution Settings
+We configure <cite>50</cite> concurrent users with a <cite>1m</cite> ramp-up. This ensures that
+load is added gradually to avoid overwhelming the system at the very
+beginning of the test.</p>
+<p>### 2. Data Sources
+The <cite>users.csv</cite> file provides unique credentials for each virtual user,
+preventing duplicate login attempts and ensuring a realistic distribution
+of accounts.</p>
+<p>### 3. State Management
+We use <cite>extract-jsonpath</cite> to capture the <cite>authToken</cite> from the login response
+and reuse it in the <cite>Authorization</cite> header for all subsequent requests.
+This maintains the stateful nature of a real user session.</p>
+<p>### 4. Dynamic Data
+The <cite>${faker.word}</cite> macro generates a random search term for each request,
+preventing the backend from serving cached results and ensuring a
+comprehensive test of the search index.</p>
+<p>### 5. Control Flow
+The <cite>if</cite> condition handles cases where a search might return no results,
+while the <cite>loop</cite> ensures the user waits for their order to process before
+finishing the scenario, mirroring real user patience.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="distributed_mode.html" class="btn btn-neutral float-left" title="Distributed Mode" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api_reference.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
