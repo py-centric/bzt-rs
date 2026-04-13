@@ -1,28 +1,135 @@
-# bzt-rs (TLDR)
+# bzt-rs
 
-**bzt-rs** is a high-performance, Rust-based load generator that executes Taurus YAML and native shorthand configurations using the Goose engine.
+**bzt-rs** is a high-performance, Rust-native load generator that bridges the simplicity of [Taurus](https://gettaurus.org/) YAML configurations with the extreme performance of the [Goose](https://goose.rs/) attack engine.
 
-## Quick Start
+Built for modern SRE and DevOps workflows, `bzt-rs` allows you to define complex load tests in human-readable formats and execute them with minimal resource overhead.
 
-1. **Build**: `cargo build --release`
-2. **Run**: `./target/release/bzt-rs test.yaml`
+---
 
-### Minimal Example (`test.yaml`)
-```yaml
-execution: [{concurrency: 5, ramp-up: 10s, hold-for: 1m, scenario: simple}]
-scenarios:
-  simple:
-    requests: ["http://localhost:8080/"]
+## Key Features
+
+- **Multi-Format Support**: Native parsing for **YAML**, **JSON**, and **TOML**.
+- **Simplified Shorthand**: Use a ultra-concise TOML-based shorthand for quick tests.
+- **Distributed Scale**: Built-in **Manager/Worker** mode for massive, coordinated load tests across clusters.
+- **Smart Validation**: Use `--dry-run` to verify configurations and file dependencies before execution.
+- **Integrated Mocking**: Spin up an assertion-based HTTP **Mock Server** based on your test configuration for functional verification.
+- **Dynamic Data**: Support for environment variable injection, CSV data sources, and macro-based fake data generation.
+- **Advanced Control Flow**: Support for hierarchical scenarios, weighted branching, and setup/teardown tasks.
+- **Observability**: First-class support for **Prometheus** metrics and **OpenTelemetry** tracing.
+- **Rich Reporting**: Generates CLI summaries, interactive HTML reports, and JUnit-compatible XML.
+
+---
+
+## Installation
+
+Ensure you have [Rust 2024+](https://www.rust-lang.org/tools/install) installed.
+
+```bash
+# Clone the repository
+git clone https://github.com/your-repo/bzt-rs.git
+cd bzt-rs
+
+# Build the release binary
+cargo build --release
 ```
 
-## Key Capabilities
-- **Formats**: YAML, JSON, TOML (Shorthand supported).
-- **Features**: State extraction, variable interpolation, TDD-first logic.
-- **Scale**: Native distributed Manager/Worker mode.
-- **Observability**: Prometheus & OpenTelemetry ready.
+The binary will be available at `./target/release/bzt-rs`.
 
-## Full Documentation
-For detailed guides, examples, and advanced features, see the [Sphinx Documentation](docs/sphinx/source/index.rst).
+---
+
+## Usage
+
+### Basic Execution
+Run a standard Taurus YAML file:
+```bash
+./target/release/bzt-rs test.yaml
+```
+
+### Distributed Mode
+Start a **Manager**:
+```bash
+./target/release/bzt-rs test.yaml --manager --expect-workers 3
+```
+
+Start a **Worker**:
+```bash
+./target/release/bzt-rs test.yaml --worker --manager-host 10.0.0.1
+```
+
+### Validation & Mocking
+**Dry Run** (validate config only):
+```bash
+./target/release/bzt-rs test.yaml --dry-run
+```
+
+**Start Mock Server**:
+```bash
+./target/release/bzt-rs test.yaml --mock
+```
+
+**Run against Mock Server**:
+```bash
+./target/release/bzt-rs test.yaml --mock-run
+```
+
+### CLI Arguments Summary
+
+| Argument | Description |
+|----------|-------------|
+| `<CONFIG>` | Path to `.yaml`, `.json`, or `.toml` configuration. |
+| `--manager` | Start in Manager mode for distributed testing. |
+| `--worker` | Start in Worker mode. |
+| `--expect-workers <N>` | (Manager only) Wait for N workers before starting. |
+| `--metrics` | Enable Prometheus metrics exporter. |
+| `--metrics-port <PORT>` | Port for Prometheus exporter (Default: 8080). |
+| `--dry-run` | Validate configuration and dependencies without execution. |
+| `--mock` | Start an internal HTTP mock server based on the config. |
+| `--mock-run` | Run the test configuration against an internal mock server. |
+
+---
+
+## Configuration Examples
+
+### Taurus YAML (`test.yaml`)
+```yaml
+execution:
+  - concurrency: 50
+    ramp-up: 30s
+    hold-for: 5m
+    scenario: web-app
+
+scenarios:
+  web-app:
+    requests:
+      - http://api.example.com/v1/status
+      - url: http://api.example.com/v1/user
+        method: POST
+        body: '{"name": "${USER_NAME}"}'
+```
+
+### Shorthand TOML (`quick.toml`)
+```toml
+concurrency = 10
+hold-for = "1m"
+url = "http://localhost:8080/"
+```
+
+---
+
+## Architecture
+
+`bzt-rs` follows a modular pipeline:
+1. **Parser**: Deserializes multi-format configs into a core AST.
+2. **Normalizer**: Unifies different schemas (Taurus/Shorthand).
+3. **Translator**: Maps the AST to dynamic Goose scenarios and tasks.
+4. **Goose Engine**: Executes the high-concurrency attack.
+
+---
+
+## Documentation
+
+For detailed guides, API references, and advanced configuration examples, please see the [Sphinx Documentation](docs/sphinx/source/index.rst).
 
 ## License
+
 Apache License 2.0.
