@@ -1,53 +1,109 @@
-Detailed Example
-================
+Detailed Example: E-Commerce User Journey
+========================================
 
-This example demonstrates a complete user journey including authentication, 
-state management, and control flow.
+This example demonstrates a realistic load test scenario for an e-commerce 
+platform, covering authentication, data parameterization, stateful 
+extraction, and complex control flow.
 
-Scenario Definition
--------------------
+The Scenario
+------------
+A virtual user will:
+1. Load credentials from a CSV file.
+2. Authenticate and extract a session token.
+3. Search for a product using a randomized search term.
+4. Add the product to their cart if it exists.
+5. Poll the order status until it is confirmed.
+
+Full Configuration (`ecommerce_test.yaml`)
+-----------------------------------------
 
 .. code-block:: yaml
 
    execution:
-   - concurrency: 5
-     ramp-up: 10s
-     hold-for: 1m
-     scenario: complex-journey
+   - concurrency: 50           # Scale to 50 concurrent users
+     ramp-up: 1m               # Reach target concurrency over 1 minute
+     hold-for: 5m              # Maintain load for 5 minutes
+     scenario: checkout-flow
 
    scenarios:
-     complex-journey:
+     checkout-flow:
        data-sources:
-       - users.csv
+       - users.csv             # CSV file containing 'username' and 'password'
+       
        requests:
-       # Login and extract token
-       - url: http://api.example.com/login
+       # Step 1: Authentication
+       - url: http://api.shop.com/v1/login
          method: POST
-         body: '{"username": "${username}", "password": "${password}"}'
+         label: login_request
+         body:
+           user: "${username}"
+           pass: "${password}"
          extract-jsonpath:
-           token: $.access_token
+           authToken: $.session.token
          assert:
          - contains: [200]
            subject: http-code
 
-       # Access profile using token
-       - url: http://api.example.com/profile
+       # Step 2: Product Search with Macro
+       - url: http://api.shop.com/v1/search?q=${faker.word}
+         method: GET
+         label: search_products
          headers:
-           Authorization: Bearer ${token}
+           Authorization: "Bearer ${authToken}"
          extract-jsonpath:
-           userId: $.id
+           productId: $.results[0].id
 
-       # Conditional check
-       - url: http://api.example.com/check/${userId}
-         if: userId != ""
-         
-       # Polling loop
-       - url: http://api.example.com/status/${userId}
-         loop: status == "processing"
+       # Step 3: Conditional Add to Cart
+       - url: http://api.shop.com/v1/cart/add
+         method: POST
+         label: add_to_cart
+         if: "${productId}" != ""  # Only add to cart if a product was found
+         headers:
+           Authorization: "Bearer ${authToken}"
+         body:
+           product_id: "${productId}"
+           quantity: 1
+
+       # Step 4: Polling for Order Status
+       - url: http://api.shop.com/v1/orders/status
+         method: GET
+         label: poll_order_status
+         headers:
+           Authorization: "Bearer ${authToken}"
+         loop: "${orderStatus}" == "processing"
          extract-jsonpath:
-           status: $.status
+           orderStatus: $.status
 
    reporting:
    - module: junit-xml
-     filename: results.xml
-     failed-threshold: 0.05
+     filename: test_results.xml
+   - module: prometheus
+     port: 8080
+
+Step-by-Step Breakdown
+----------------------
+
+### 1. Execution Settings
+We configure `50` concurrent users with a `1m` ramp-up. This ensures that 
+load is added gradually to avoid overwhelming the system at the very 
+beginning of the test.
+
+### 2. Data Sources
+The `users.csv` file provides unique credentials for each virtual user, 
+preventing duplicate login attempts and ensuring a realistic distribution 
+of accounts.
+
+### 3. State Management
+We use `extract-jsonpath` to capture the `authToken` from the login response 
+and reuse it in the `Authorization` header for all subsequent requests. 
+This maintains the stateful nature of a real user session.
+
+### 4. Dynamic Data
+The `${faker.word}` macro generates a random search term for each request, 
+preventing the backend from serving cached results and ensuring a 
+comprehensive test of the search index.
+
+### 5. Control Flow
+The `if` condition handles cases where a search might return no results, 
+while the `loop` ensures the user waits for their order to process before 
+finishing the scenario, mirroring real user patience.

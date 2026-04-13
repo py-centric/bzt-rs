@@ -20,5 +20,8 @@ CLI Arguments
          --metrics                          Enable Prometheus metrics exporter
          --metrics-port <METRICS_PORT>      Port for the Prometheus metrics exporter [default: 8080]
          --otel                             Enable OpenTelemetry tracing injection
+     -d, --dry-run                          Validate the configuration and dependencies without executing the test
+     -m, --mock                             Start an internal HTTP mock server based on the configuration
+         --mock-run                         Start the mock server and run the configuration against it
      -h, --help                             Print help
      -V, --version                          Print version
