@@ -1,15 +1,19 @@
 Advanced Features
 =================
 
-bzt-rs provides robust mechanisms for building complex, realistic 
+bzt-rs provides robust mechanisms for building complex, realistic
 performance tests that mirror real-world user behavior.
 
 Dynamic Data & Macros
 ---------------------
 Inject dynamic, randomized data into your requests using built-in macros:
+
 * **${faker.email}**: Generates a random email address.
+
 * **${faker.name}**: Generates a random full name.
+
 * **${uuid}**: Generates a unique UUID v4.
+
 * **${env.MY_VAR}**: Injects the value of the `MY_VAR` environment variable.
 
 Data Sources (CSV)
@@ -30,19 +34,24 @@ Iterate through external data files for parameterization.
 Variable Extraction & Interpolation
 -----------------------------------
 Build stateful user journeys by extracting data from responses:
+
 * **JSONPath Extraction**:
+
   .. code-block:: yaml
 
      extract-jsonpath:
        token: $.access_token
 
+
 * **Regex Extraction**:
+
   .. code-block:: yaml
 
      extract-regexp:
        id: "id=([0-9]+)"
 
 Use extracted variables in any subsequent request field:
+
 .. code-block:: yaml
 
    requests:
@@ -52,16 +61,20 @@ Use extracted variables in any subsequent request field:
 
 Control Flow: Conditions & Loops
 --------------------------------
+
 * **Conditional Execution (`if`)**:
   Execute a request only if a condition is met.
+
   .. code-block:: yaml
 
      requests:
      - url: /api/special
        if: "${id}" != ""
 
+
 * **Polling Loops (`loop`)**:
   Repeatedly execute a request until a condition is satisfied.
+
   .. code-block:: yaml
 
      requests:

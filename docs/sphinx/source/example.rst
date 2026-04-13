@@ -1,21 +1,26 @@
 Detailed Example: E-Commerce User Journey
-========================================
+=========================================
 
-This example demonstrates a realistic load test scenario for an e-commerce 
-platform, covering authentication, data parameterization, stateful 
+This example demonstrates a realistic load test scenario for an e-commerce
+platform, covering authentication, data parameterization, stateful
 extraction, and complex control flow.
 
 The Scenario
 ------------
 A virtual user will:
+
 1. Load credentials from a CSV file.
+
 2. Authenticate and extract a session token.
+
 3. Search for a product using a randomized search term.
+
 4. Add the product to their cart if it exists.
+
 5. Poll the order status until it is confirmed.
 
 Full Configuration (`ecommerce_test.yaml`)
------------------------------------------
+------------------------------------------
 
 .. code-block:: yaml
 
@@ -29,7 +34,7 @@ Full Configuration (`ecommerce_test.yaml`)
      checkout-flow:
        data-sources:
        - users.csv             # CSV file containing 'username' and 'password'
-       
+
        requests:
        # Step 1: Authentication
        - url: http://api.shop.com/v1/login
@@ -84,26 +89,26 @@ Step-by-Step Breakdown
 ----------------------
 
 ### 1. Execution Settings
-We configure `50` concurrent users with a `1m` ramp-up. This ensures that 
-load is added gradually to avoid overwhelming the system at the very 
+We configure `50` concurrent users with a `1m` ramp-up. This ensures that
+load is added gradually to avoid overwhelming the system at the very
 beginning of the test.
 
 ### 2. Data Sources
-The `users.csv` file provides unique credentials for each virtual user, 
-preventing duplicate login attempts and ensuring a realistic distribution 
+The `users.csv` file provides unique credentials for each virtual user,
+preventing duplicate login attempts and ensuring a realistic distribution
 of accounts.
 
 ### 3. State Management
-We use `extract-jsonpath` to capture the `authToken` from the login response 
-and reuse it in the `Authorization` header for all subsequent requests. 
+We use `extract-jsonpath` to capture the `authToken` from the login response
+and reuse it in the `Authorization` header for all subsequent requests.
 This maintains the stateful nature of a real user session.
 
 ### 4. Dynamic Data
-The `${faker.word}` macro generates a random search term for each request, 
-preventing the backend from serving cached results and ensuring a 
+The `${faker.word}` macro generates a random search term for each request,
+preventing the backend from serving cached results and ensuring a
 comprehensive test of the search index.
 
 ### 5. Control Flow
-The `if` condition handles cases where a search might return no results, 
-while the `loop` ensures the user waits for their order to process before 
+The `if` condition handles cases where a search might return no results,
+while the `loop` ensures the user waits for their order to process before
 finishing the scenario, mirroring real user patience.
