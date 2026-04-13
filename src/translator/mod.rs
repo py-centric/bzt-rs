@@ -12,7 +12,10 @@ use std::time::Duration;
 pub struct StateTranslator;
 
 impl StateTranslator {
-    pub fn translate(config: &Configuration) -> Result<GooseAttack, String> {
+    pub fn translate(
+        config: &Configuration,
+        host_override: Option<String>,
+    ) -> Result<GooseAttack, String> {
         let configuration = goose::config::GooseConfiguration::default();
         let mut attack =
             GooseAttack::initialize_with_config(configuration).map_err(|e| e.to_string())?;
@@ -43,9 +46,19 @@ impl StateTranslator {
             attack = *attack
                 .set_default(GooseDefault::HatchRate, hatch_rate.as_str())
                 .map_err(|e| e.to_string())?;
+
+            let host = host_override
+                .clone()
+                .unwrap_or_else(|| "http://localhost".to_string());
             attack = *attack
-                .set_default(GooseDefault::Host, "http://localhost")
+                .set_default(GooseDefault::Host, host.as_str())
                 .map_err(|e| e.to_string())?;
+
+            if let Some(throughput) = exec.throughput {
+                attack = *attack
+                    .set_default(GooseDefault::ThrottleRequests, throughput)
+                    .map_err(|e| e.to_string())?;
+            }
 
             if let Some(scenario_def) = config.scenarios.get(&exec.scenario) {
                 let scenario_name = exec.scenario.clone();
@@ -349,7 +362,7 @@ mod tests {
             scenarios,
             reporting: vec![],
         };
-        let result = StateTranslator::translate(&config);
+        let result = StateTranslator::translate(&config, None);
         assert!(result.is_ok());
     }
 
@@ -410,7 +423,7 @@ mod tests {
             scenarios,
             reporting: vec![],
         };
-        let result = StateTranslator::translate(&config);
+        let result = StateTranslator::translate(&config, None);
         assert!(result.is_ok());
     }
 

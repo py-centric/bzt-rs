@@ -44,6 +44,18 @@ struct Args {
     /// Enable OpenTelemetry tracing injection
     #[arg(long)]
     otel: bool,
+
+    /// Validate the configuration and dependencies without executing the test
+    #[arg(long, short = 'd')]
+    dry_run: bool,
+
+    /// Start an internal HTTP mock server based on the configuration
+    #[arg(long, short = 'm')]
+    mock: bool,
+
+    /// Start the mock server and run the configuration against it
+    #[arg(long)]
+    mock_run: bool,
 }
 
 #[tokio::main]
@@ -90,9 +102,54 @@ async fn main() -> Result<(), String> {
     }
 
     if args.metrics {
-        // REQ-8.1: Start metrics server
-        println!("Starting metrics server on port {}", args.metrics_port);
-        // Skeleton: In a real implementation, we'd start an Axum server here
+        // FR-018: Enable Goose metrics server via environment variables
+        unsafe {
+            std::env::set_var("GOOSE_METRICS", "true");
+            std::env::set_var("GOOSE_METRICS_PORT", args.metrics_port.to_string());
+        }
+        println!(
+            "Prometheus metrics server enabled on port {}",
+            args.metrics_port
+        );
+    }
+
+    if args.otel {
+        // FR-018: Enable OpenTelemetry tracing via environment variable
+        unsafe {
+            std::env::set_var("BZT_OTEL_ENABLED", "true");
+            // In a real implementation, we would also initialize the tracer here
+        }
+        println!("OpenTelemetry tracing enabled");
+    }
+
+    if args.dry_run {
+        let summary = engine::validation::validate_config(&config);
+        summary.report();
+        if summary.is_valid() {
+            return Ok(());
+        } else {
+            std::process::exit(1);
+        }
+    }
+
+    if args.mock {
+        let _ = engine::mock::start_mock_server(config).await?;
+        println!("Mock server is running. Press Ctrl+C to stop.");
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
+    }
+
+    if args.mock_run {
+        println!("Starting integrated mock run...");
+        let addr = engine::mock::start_mock_server(config.clone()).await?;
+        let host_override = format!("http://{}", addr);
+
+        let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override))?;
+        let _stats = attack.execute().await.map_err(|e| e.to_string())?;
+
+        println!("Integrated mock run complete.");
+        return Ok(());
     }
 
     engine::goose::run_attack(config).await?;

@@ -43,7 +43,7 @@ pub enum HTTPRequestDefinition {
     Detailed(Box<DetailedRequest>),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DetailedRequest {
     pub url: String,
     pub method: Option<String>,
