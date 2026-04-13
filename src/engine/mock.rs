@@ -24,12 +24,13 @@ impl Default for MockResponse {
         headers.insert("Content-Type".to_string(), "text/plain".to_string());
         Self {
             status: 200,
-            body: "".to_string(),
+            body: String::new(),
             headers,
         }
     }
 }
 
+#[must_use]
 pub fn generate_mock_response(req: &DetailedRequest) -> MockResponse {
     let mut response = MockResponse::default();
     let mut bodies = Vec::new();
@@ -57,7 +58,7 @@ async fn handle_mock_request(
     let path = if path.starts_with('/') {
         path
     } else {
-        format!("/{}", path)
+        format!("/{path}")
     };
 
     tracing::debug!("Mock request: {} {}", method, path);
@@ -105,7 +106,7 @@ pub async fn start_mock_server(config: Configuration) -> Result<SocketAddr, Stri
         .map_err(|e| e.to_string())?;
     let local_addr = listener.local_addr().map_err(|e| e.to_string())?;
 
-    println!("Mock server started at http://{}", local_addr);
+    println!("Mock server started at http://{local_addr}");
 
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();

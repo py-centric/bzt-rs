@@ -147,7 +147,7 @@ impl StateTranslator {
                                         }
 
                                         match d.protocol.as_deref() {
-                                            Some("websocket") | Some("ws") => {
+                                            Some("websocket" | "ws") => {
                                                 if let Some(msg) = &d.message {
                                                     let final_msg =
                                                         Interpolator::interpolate(msg, &variables);
@@ -155,16 +155,14 @@ impl StateTranslator {
                                                         &final_msg, record,
                                                     );
                                                     println!(
-                                                        "WS: Sending {} to {}",
-                                                        final_msg, final_url
+                                                        "WS: Sending {final_msg} to {final_url}"
                                                     );
                                                 }
                                             }
                                             Some("grpc") => {
                                                 if let Some(method) = &d.method_name {
                                                     println!(
-                                                        "gRPC: Calling {} on {}",
-                                                        method, final_url
+                                                        "gRPC: Calling {method} on {final_url}"
                                                     );
                                                 }
                                             }
@@ -273,7 +271,7 @@ fn evaluate_condition(cond: &str, variables: &HashMap<String, String>) -> bool {
                 .strip_prefix('"')
                 .and_then(|s| s.strip_suffix('"'))
                 .unwrap_or(parts[1].trim());
-            return variables.get(var).map(|v| v == val).unwrap_or(false);
+            return variables.get(var).is_some_and(|v| v == val);
         }
     } else if cond.contains("!=") {
         let parts: Vec<&str> = cond.split("!=").collect();
@@ -284,7 +282,7 @@ fn evaluate_condition(cond: &str, variables: &HashMap<String, String>) -> bool {
                 .strip_prefix('"')
                 .and_then(|s| s.strip_suffix('"'))
                 .unwrap_or(parts[1].trim());
-            return variables.get(var).map(|v| v != val).unwrap_or(true);
+            return variables.get(var).is_none_or(|v| v != val);
         }
     }
     false

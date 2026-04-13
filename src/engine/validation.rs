@@ -18,6 +18,7 @@ pub struct ValidationSummary {
 }
 
 impl ValidationSummary {
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.syntax_valid
             && self.normalization_successful
@@ -38,8 +39,8 @@ impl ValidationSummary {
 
         for (file, status) in &self.file_existence {
             match status {
-                FileStatus::Found => println!("[OK] Verifying data-source: {}", file),
-                FileStatus::Missing => println!("[ERROR] Missing data-source: {}", file),
+                FileStatus::Found => println!("[OK] Verifying data-source: {file}"),
+                FileStatus::Missing => println!("[ERROR] Missing data-source: {file}"),
             }
         }
 
@@ -87,6 +88,7 @@ pub fn validate_config(config: &Configuration) -> ValidationSummary {
     summary
 }
 
+#[must_use]
 pub fn validate_files(files: &[String]) -> HashMap<String, FileStatus> {
     let mut existence = HashMap::new();
     for file in files {

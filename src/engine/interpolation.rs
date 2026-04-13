@@ -4,6 +4,7 @@ use std::collections::HashMap;
 pub struct Interpolator;
 
 impl Interpolator {
+    #[must_use]
     pub fn interpolate(input: &str, variables: &HashMap<String, String>) -> String {
         let output = input.to_string();
         let re = Regex::new(r"\$\{([a-zA-Z0-9_]+)\}").unwrap();

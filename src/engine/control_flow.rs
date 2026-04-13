@@ -4,13 +4,13 @@ use regex::Regex;
 pub struct AssertionEngine;
 
 impl AssertionEngine {
+    #[allow(clippy::missing_errors_doc)]
     pub fn check_assertion(
         body: &str,
         status: u16,
         assertion: &AssertionDefinition,
     ) -> Result<(), String> {
         let subject_val = match assertion.subject.as_str() {
-            "body" => body,
             "http-code" => return check_status(status, assertion),
             _ => body,
         };

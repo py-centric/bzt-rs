@@ -65,10 +65,10 @@ pub struct DetailedRequest {
     pub message: Option<String>,
     /// gRPC service method
     pub method_name: Option<String>,
-    /// Conditional execution: variable_name == value
+    /// Conditional execution: `variable_name` == value
     #[serde(rename = "if")]
     pub execute_if: Option<String>,
-    /// Loop execution: while variable_name == value
+    /// Loop execution: while `variable_name` == value
     #[serde(rename = "loop")]
     pub loop_while: Option<String>,
 }

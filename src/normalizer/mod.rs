@@ -42,6 +42,7 @@ pub struct ShorthandScenario {
 pub struct SchemaNormalizer;
 
 impl SchemaNormalizer {
+    #[must_use]
     pub fn normalize_shorthand(shorthand: ShorthandConfiguration) -> Configuration {
         let execution = match shorthand.execution {
             ShorthandExecution::Single(plan) => vec![ExecutionPlan {

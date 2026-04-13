@@ -26,8 +26,7 @@ impl JUnitReporter {
         writeln!(file, "<testsuites>").unwrap();
         writeln!(
             file,
-            "  <testsuite name=\"bzt-rs\" tests=\"{}\" failures=\"{}\">",
-            total_requests, failures
+            "  <testsuite name=\"bzt-rs\" tests=\"{total_requests}\" failures=\"{failures}\">"
         )
         .unwrap();
 

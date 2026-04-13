@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic)]
 use bzt_rs::engine;
 use bzt_rs::normalizer::{SchemaNormalizer, ShorthandConfiguration};
 use bzt_rs::parser::json::JsonParser;
@@ -5,6 +6,7 @@ use bzt_rs::parser::toml::TomlParser;
 use bzt_rs::parser::yaml::YamlParser;
 use clap::Parser;
 use std::fs;
+use std::path::Path;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -64,11 +66,20 @@ async fn main() -> Result<(), String> {
     let args = Args::parse();
 
     let config_path = &args.config;
-    let config = if config_path.ends_with(".yaml") || config_path.ends_with(".yml") {
+    let config = if Path::new(config_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
+    {
         YamlParser::parse(config_path)?
-    } else if config_path.ends_with(".json") {
+    } else if Path::new(config_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+    {
         JsonParser::parse(config_path)?
-    } else if config_path.ends_with(".toml") {
+    } else if Path::new(config_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("toml"))
+    {
         let content = fs::read_to_string(config_path).map_err(|e| e.to_string())?;
         if let Ok(shorthand) = toml::from_str::<ShorthandConfiguration>(&content) {
             SchemaNormalizer::normalize_shorthand(shorthand)
@@ -127,9 +138,8 @@ async fn main() -> Result<(), String> {
         summary.report();
         if summary.is_valid() {
             return Ok(());
-        } else {
-            std::process::exit(1);
         }
+        std::process::exit(1);
     }
 
     if args.mock {
@@ -143,7 +153,7 @@ async fn main() -> Result<(), String> {
     if args.mock_run {
         println!("Starting integrated mock run...");
         let addr = engine::mock::start_mock_server(config.clone()).await?;
-        let host_override = format!("http://{}", addr);
+        let host_override = format!("http://{addr}");
 
         let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override))?;
         let _stats = attack.execute().await.map_err(|e| e.to_string())?;

@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub struct MacroEvaluator;
 
 impl MacroEvaluator {
+    #[must_use]
     pub fn evaluate(input: &str, record: Option<&HashMap<String, String>>) -> String {
         let mut output = input.to_string();
 

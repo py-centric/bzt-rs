@@ -26,6 +26,7 @@ impl CsvDataSource {
         Ok(CsvDataSource { records })
     }
 
+    #[must_use]
     pub fn get_record(&self, index: usize) -> Option<&HashMap<String, String>> {
         self.records.get(index % self.records.len())
     }
