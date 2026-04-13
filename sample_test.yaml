@@ -1,0 +1,43 @@
+execution:
+- concurrency: 2
+  ramp-up: 5s
+  hold-for: 10s
+  throughput: 5  # Limit to 5 requests per second
+  scenario: sample-scenario
+
+scenarios:
+  sample-scenario:
+    data-sources:
+    - users.csv  # Uses 'id' and 'name' from the existing users.csv
+    
+    requests:
+    # 1. Login using data from CSV
+    - url: "http://localhost:8080/login?user=${name}"
+      method: GET
+      label: login
+      assert:
+      - contains: [200]
+        subject: http-code
+
+    # 2. Access profile using UUID macro
+    - url: "http://localhost:8080/api/session/${uuid}"
+      method: GET
+      label: session_check
+
+    # 3. Dynamic search using faker macro
+    - url: "http://localhost:8080/api/search?q=${faker.word}"
+      method: GET
+      label: search
+
+    # 4. Conditional request based on environment variable
+    - url: "http://localhost:8080/api/debug"
+      method: GET
+      if: "${env.DEBUG}" == "true"
+
+reporting:
+- module: html
+  filename: test_report.html
+- module: junit-xml
+  filename: test_results.xml
+- module: prometheus
+  port: 8080

@@ -1,10 +1,11 @@
 execution:
 - concurrency: 1
   ramp-up: 0s
-  hold-for: 1s
+  hold-for: 2s
   scenario: sample
-
 scenarios:
   sample:
     requests:
-    - http://localhost:8080/
+    - url: /api/login
+      assert:
+      - contains: ["Success", "token: 123"]
