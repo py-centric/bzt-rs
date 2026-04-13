@@ -1,0 +1,10 @@
+execution:
+- concurrency: 1
+  ramp-up: 0s
+  hold-for: 1s
+  scenario: sample
+
+scenarios:
+  sample:
+    requests:
+    - http://localhost:8080/

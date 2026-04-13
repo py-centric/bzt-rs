@@ -1,0 +1,3 @@
+/target
+config/secrets.env
+lcov.info
