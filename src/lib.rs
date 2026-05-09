@@ -1,4 +1,3 @@
-#![allow(clippy::pedantic)]
 pub mod engine;
 pub mod models;
 pub mod normalizer;

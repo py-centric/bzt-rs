@@ -1,3 +1,4 @@
+use crate::engine::BztError;
 use crate::models::config::Configuration;
 use std::fs;
 use std::path::Path;
@@ -6,9 +7,17 @@ use toml;
 pub struct TomlParser;
 
 impl TomlParser {
-    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, String> {
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        toml::from_str(&content).map_err(|e| e.to_string())
+    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, BztError> {
+        let path = path.as_ref();
+        let content = fs::read_to_string(path)?;
+        toml::from_str(&content).map_err(|e| {
+            let msg = e.to_string();
+            BztError::Serde {
+                message: msg,
+                file_path: Some(path.to_string_lossy().to_string()),
+                source: Some(Box::new(e)),
+            }
+        })
     }
 }
 

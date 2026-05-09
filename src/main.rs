@@ -1,5 +1,5 @@
-#![allow(clippy::pedantic)]
 use bzt_rs::engine;
+use bzt_rs::engine::BztError;
 use bzt_rs::normalizer::{SchemaNormalizer, ShorthandConfiguration};
 use bzt_rs::parser::json::JsonParser;
 use bzt_rs::parser::toml::TomlParser;
@@ -15,38 +15,6 @@ struct Args {
     #[arg(index = 1)]
     config: String,
 
-    /// Start in Manager mode
-    #[arg(long)]
-    manager: bool,
-
-    /// Start in Worker mode
-    #[arg(long)]
-    worker: bool,
-
-    /// Number of workers to expect (Manager mode only)
-    #[arg(long)]
-    expect_workers: Option<usize>,
-
-    /// Host the Manager is listening on (Worker mode only)
-    #[arg(long)]
-    manager_host: Option<String>,
-
-    /// Port the Manager is listening on
-    #[arg(long)]
-    manager_port: Option<u16>,
-
-    /// Enable Prometheus metrics exporter
-    #[arg(long)]
-    metrics: bool,
-
-    /// Port for the Prometheus metrics exporter
-    #[arg(long, default_value_t = 8080)]
-    metrics_port: u16,
-
-    /// Enable OpenTelemetry tracing injection
-    #[arg(long)]
-    otel: bool,
-
     /// Validate the configuration and dependencies without executing the test
     #[arg(long, short = 'd')]
     dry_run: bool,
@@ -61,77 +29,47 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn main() -> Result<(), BztError> {
     engine::init_logging();
     let args = Args::parse();
+    tracing::debug!(
+        "CLI flags: dry_run={}, mock={}, mock_run={}",
+        args.dry_run,
+        args.mock,
+        args.mock_run
+    );
 
     let config_path = &args.config;
     let config = if Path::new(config_path)
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
     {
+        tracing::info!("Parsing YAML config: {}", config_path);
         YamlParser::parse(config_path)?
     } else if Path::new(config_path)
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
     {
+        tracing::info!("Parsing JSON config: {}", config_path);
         JsonParser::parse(config_path)?
     } else if Path::new(config_path)
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("toml"))
     {
-        let content = fs::read_to_string(config_path).map_err(|e| e.to_string())?;
+        tracing::info!("Parsing TOML config: {}", config_path);
+        let content = fs::read_to_string(config_path)?;
         if let Ok(shorthand) = toml::from_str::<ShorthandConfiguration>(&content) {
             SchemaNormalizer::normalize_shorthand(shorthand)
         } else {
             TomlParser::parse(config_path)?
         }
     } else {
-        return Err("Unsupported file format".to_string());
+        tracing::error!("Unsupported file format: {}", config_path);
+        return Err(BztError::Validation {
+            field: "file_extension".to_string(),
+            reason: "Unsupported file format. Supported: .yaml, .yml, .json, .toml".to_string(),
+        });
     };
-
-    // Use unsafe block for set_var as required by newer Rust editions
-    unsafe {
-        if args.manager {
-            std::env::set_var("GOOSE_MANAGER", "true");
-            if let Some(expect) = args.expect_workers {
-                std::env::set_var("GOOSE_EXPECT_WORKERS", expect.to_string());
-            }
-        }
-        if args.worker {
-            std::env::set_var("GOOSE_WORKER", "true");
-            if let Some(host) = args.manager_host {
-                std::env::set_var("GOOSE_MANAGER_HOST", host);
-            }
-        }
-        if let Some(port) = args.manager_port {
-            std::env::set_var("GOOSE_MANAGER_PORT", port.to_string());
-        }
-        if args.otel {
-            std::env::set_var("BZT_OTEL_ENABLED", "true");
-        }
-    }
-
-    if args.metrics {
-        // FR-018: Enable Goose metrics server via environment variables
-        unsafe {
-            std::env::set_var("GOOSE_METRICS", "true");
-            std::env::set_var("GOOSE_METRICS_PORT", args.metrics_port.to_string());
-        }
-        println!(
-            "Prometheus metrics server enabled on port {}",
-            args.metrics_port
-        );
-    }
-
-    if args.otel {
-        // FR-018: Enable OpenTelemetry tracing via environment variable
-        unsafe {
-            std::env::set_var("BZT_OTEL_ENABLED", "true");
-            // In a real implementation, we would also initialize the tracer here
-        }
-        println!("OpenTelemetry tracing enabled");
-    }
 
     if args.dry_run {
         let summary = engine::validation::validate_config(&config);
@@ -156,7 +94,10 @@ async fn main() -> Result<(), String> {
         let host_override = format!("http://{addr}");
 
         let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override))?;
-        let _stats = attack.execute().await.map_err(|e| e.to_string())?;
+        let _stats = attack
+            .execute()
+            .await
+            .map_err(|e| BztError::Goose(Box::new(e)))?;
 
         println!("Integrated mock run complete.");
         return Ok(());
