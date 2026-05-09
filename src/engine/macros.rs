@@ -30,11 +30,11 @@ pub fn is_sensitive_var(name: &str) -> bool {
 }
 
 /// Masks a sensitive variable value for safe logging.
-/// Returns `"***"` if the variable name is sensitive, otherwise returns the value.
+/// Returns `"[REDACTED]"` if the variable name is sensitive, otherwise returns the value.
 #[must_use]
 pub fn mask_env_value(name: &str, value: &str) -> String {
     if is_sensitive_var(name) {
-        "***".to_string()
+        "[REDACTED]".to_string()
     } else {
         value.to_string()
     }
@@ -164,8 +164,8 @@ mod tests {
 
     #[test]
     fn test_mask_env_value_sensitive() {
-        assert_eq!(mask_env_value("AWS_SECRET_KEY", "super-secret"), "***");
-        assert_eq!(mask_env_value("DB_PASSWORD", "hunter2"), "***");
+        assert_eq!(mask_env_value("AWS_SECRET_KEY", "super-secret"), "[REDACTED]");
+        assert_eq!(mask_env_value("DB_PASSWORD", "hunter2"), "[REDACTED]");
     }
 
     #[test]

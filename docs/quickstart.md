@@ -65,6 +65,8 @@ Check config without hitting the target:
 
 Validates parsing, file dependencies (CSV, body files), and Goose translation.
 
+> **Tip:** Errors use a structured `[CATEGORY]` format (e.g., `[CONFIG]` file not found, `[NETWORK]` connection refused). Config typos are caught — 7 config structs use `#[serde(deny_unknown_fields)]`, so misspelled YAML/JSON/TOML keys cause a deserialization error with the file path and offending key shown.
+
 ## Mock Server
 
 Start mock on `127.0.0.1`:
@@ -80,6 +82,8 @@ Start + run in one shot:
 ```
 
 Serves responses from `assert:` criteria — verify assertions in isolation.
+
+> **Note:** Run `--help` to see all CLI flags. Only 4 exist: `<CONFIG>`, `-d`/`--dry-run`, `-m`/`--mock`, and `--mock-run`. Flags removed from Taurus (`--manager`, `--worker`, `--metrics`, `--otel`) are **rejected** with an "unrecognized option" error — they are not silently ignored.
 
 ## Common Patterns
 
@@ -134,7 +138,9 @@ Fields like `${id}`, `${name}` interpolate from CSV rows per-request.
 url: "https://${env.API_HOST}/v1/items"
 ```
 
-Sensitive vars (`AWS_*`, `*_SECRET*`, `*_PASSWORD`) are blocked and masked as `***`.
+Sensitive vars (`AWS_*`, `SECRET*`, `*_TOKEN`, `*_PASSWORD`, `DATABASE_URL`) are blocked and masked as `[REDACTED]` in logs.
+
+Additional security: file paths are canonicalized and prefix-checked to prevent traversal attacks, data source files are capped at 100 MB, and the mock server binds to `127.0.0.1` only. Security events are logged at WARN level with a `[SECURITY]` prefix.
 
 ### Pacing / Rate Limits
 
@@ -177,4 +183,4 @@ Labels appear in the CLI summary. Timeouts default to Goose's internal default.
 
 - [Architecture](architecture.md) — pipeline flow and component design
 - [README](../README.md) — CLI reference
-- [Sphinx Docs](sphinx/source/index.rst) — full config reference, advanced features
+- [Sphinx Docs](sphinx/build/index.html) — full config reference, advanced features
