@@ -52,6 +52,7 @@ impl SchemaNormalizer {
                 scenario: plan.scenario,
                 throughput: None,
                 steps: None,
+                pacing: None,
             }],
             ShorthandExecution::Multiple(plans) => plans
                 .into_iter()
@@ -62,6 +63,7 @@ impl SchemaNormalizer {
                     scenario: plan.scenario,
                     throughput: None,
                     steps: None,
+                    pacing: None,
                 })
                 .collect(),
         };
@@ -81,6 +83,7 @@ impl SchemaNormalizer {
                     weight: 1,
                     think_time: None,
                     data_sources: None,
+                    headers: None,
                 },
             );
         }
@@ -106,6 +109,9 @@ impl SchemaNormalizer {
                                         method: None,
                                         headers: None,
                                         body: None,
+                                        label: None,
+                                        body_file: None,
+                                        timeout: None,
                                         on_start: true,
                                         think_time: None,
                                         extract_jsonpath: None,

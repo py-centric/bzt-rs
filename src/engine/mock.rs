@@ -1,3 +1,4 @@
+use crate::engine::BztError;
 use crate::models::config::{Configuration, DetailedRequest, HTTPRequestDefinition};
 use axum::{
     Router,
@@ -94,17 +95,15 @@ async fn handle_mock_request(
     StatusCode::NOT_FOUND.into_response()
 }
 
-pub async fn start_mock_server(config: Configuration) -> Result<SocketAddr, String> {
+pub async fn start_mock_server(config: Configuration) -> Result<SocketAddr, BztError> {
     let shared_config = Arc::new(config);
     let app = Router::new()
         .route("/{*path}", any(handle_mock_request))
         .with_state(shared_config);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 0));
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|e| e.to_string())?;
-    let local_addr = listener.local_addr().map_err(|e| e.to_string())?;
+    let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let local_addr = listener.local_addr()?;
 
     println!("Mock server started at http://{local_addr}");
 

@@ -1,15 +1,15 @@
+use crate::engine::BztError;
 use crate::models::config::AssertionDefinition;
 use regex::Regex;
 
 pub struct AssertionEngine;
 
 impl AssertionEngine {
-    #[allow(clippy::missing_errors_doc)]
     pub fn check_assertion(
         body: &str,
         status: u16,
         assertion: &AssertionDefinition,
-    ) -> Result<(), String> {
+    ) -> Result<(), BztError> {
         let subject_val = match assertion.subject.as_str() {
             "http-code" => return check_status(status, assertion),
             _ => body,
@@ -25,28 +25,31 @@ impl AssertionEngine {
             };
 
             if found == assertion.not {
-                return Err(format!(
-                    "Assertion failed: expected {} to {} contain '{}'",
-                    assertion.subject,
-                    if assertion.not { "not" } else { "" },
-                    pattern
-                ));
+                return Err(BztError::Validation {
+                    field: assertion.subject.clone(),
+                    reason: format!(
+                        "expected to {} contain '{pattern}'",
+                        if assertion.not { "not" } else { "" },
+                    ),
+                });
             }
         }
         Ok(())
     }
 }
 
-fn check_status(status: u16, assertion: &AssertionDefinition) -> Result<(), String> {
+fn check_status(status: u16, assertion: &AssertionDefinition) -> Result<(), BztError> {
     let status_str = status.to_string();
     for pattern in &assertion.contains {
         let found = status_str == *pattern;
         if found == assertion.not {
-            return Err(format!(
-                "Assertion failed: expected status to {} be {}",
-                if assertion.not { "not" } else { "" },
-                pattern
-            ));
+            return Err(BztError::Validation {
+                field: "http-code".to_string(),
+                reason: format!(
+                    "expected status to {} be {pattern}",
+                    if assertion.not { "not" } else { "" },
+                ),
+            });
         }
     }
     Ok(())

@@ -7,6 +7,39 @@ use std::collections::HashMap;
 use std::env;
 use uuid::Uuid;
 
+/// Checks if an environment variable name matches sensitive patterns.
+/// Sensitive vars are still resolved for substitution but their values
+/// are masked in logs and error messages.
+#[must_use]
+pub fn is_sensitive_var(name: &str) -> bool {
+    let upper = name.to_uppercase();
+    if upper.starts_with("AWS_")
+        || upper.starts_with("SECRET")
+        || upper == "KEY"
+        || upper.ends_with("_KEY")
+        || upper.ends_with("_TOKEN")
+        || upper.ends_with("_PASSWORD")
+        || upper.contains("PASSWORD")
+        || upper.starts_with("PRIVATE")
+        || upper == "DATABASE_URL"
+        || upper.starts_with("DB_")
+    {
+        return true;
+    }
+    false
+}
+
+/// Masks a sensitive variable value for safe logging.
+/// Returns `"***"` if the variable name is sensitive, otherwise returns the value.
+#[must_use]
+pub fn mask_env_value(name: &str, value: &str) -> String {
+    if is_sensitive_var(name) {
+        "***".to_string()
+    } else {
+        value.to_string()
+    }
+}
+
 pub struct MacroEvaluator;
 
 impl MacroEvaluator {
@@ -38,6 +71,12 @@ impl MacroEvaluator {
         for cap in env_regex.captures_iter(&output) {
             let var_name = &cap[1];
             if let Ok(val) = env::var(var_name) {
+                if is_sensitive_var(var_name) {
+                    tracing::warn!(
+                        "[SECURITY] Sensitive env var '{}' resolved from config",
+                        var_name
+                    );
+                }
                 new_output = new_output.replace(&cap[0], &val);
             }
         }
@@ -48,6 +87,12 @@ impl MacroEvaluator {
         for cap in env_simple_regex.captures_iter(&output) {
             let var_name = &cap[1];
             if let Ok(val) = env::var(var_name) {
+                if is_sensitive_var(var_name) {
+                    tracing::warn!(
+                        "[SECURITY] Sensitive env var '{}' resolved from config",
+                        var_name
+                    );
+                }
                 new_output = new_output.replace(&cap[0], &val);
             }
         }
@@ -73,6 +118,61 @@ impl MacroEvaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_is_sensitive_var_aws() {
+        assert!(is_sensitive_var("AWS_SECRET_KEY"));
+        assert!(is_sensitive_var("AWS_ACCESS_KEY_ID"));
+        assert!(is_sensitive_var("aws_secret_key"));
+    }
+
+    #[test]
+    fn test_is_sensitive_var_secret_prefix() {
+        assert!(is_sensitive_var("SECRET_KEY"));
+        assert!(is_sensitive_var("SECRET_TOKEN"));
+        assert!(is_sensitive_var("secret_value"));
+    }
+
+    #[test]
+    fn test_is_sensitive_var_key_suffix() {
+        assert!(is_sensitive_var("API_KEY"));
+        assert!(is_sensitive_var("STRIPE_SECRET_KEY"));
+    }
+
+    #[test]
+    fn test_is_sensitive_var_token_password() {
+        assert!(is_sensitive_var("GITHUB_TOKEN"));
+        assert!(is_sensitive_var("DB_PASSWORD"));
+        assert!(is_sensitive_var("DATABASE_URL"));
+    }
+
+    #[test]
+    fn test_is_sensitive_var_private_db() {
+        assert!(is_sensitive_var("PRIVATE_KEY"));
+        assert!(is_sensitive_var("DB_HOST"));
+        assert!(is_sensitive_var("DB_NAME"));
+    }
+
+    #[test]
+    fn test_is_sensitive_var_safe() {
+        assert!(!is_sensitive_var("HOME"));
+        assert!(!is_sensitive_var("PATH"));
+        assert!(!is_sensitive_var("LANG"));
+        assert!(!is_sensitive_var("USER"));
+        assert!(!is_sensitive_var("DEBUG"));
+    }
+
+    #[test]
+    fn test_mask_env_value_sensitive() {
+        assert_eq!(mask_env_value("AWS_SECRET_KEY", "super-secret"), "***");
+        assert_eq!(mask_env_value("DB_PASSWORD", "hunter2"), "***");
+    }
+
+    #[test]
+    fn test_mask_env_value_safe() {
+        assert_eq!(mask_env_value("HOME", "/home/user"), "/home/user");
+        assert_eq!(mask_env_value("PATH", "/usr/bin"), "/usr/bin");
+    }
 
     #[test]
     fn test_env_var_injection() {
