@@ -10,12 +10,10 @@ Built for modern SRE and DevOps workflows, `bzt-rs` allows you to define complex
 
 - **Multi-Format Support**: Native parsing for **YAML**, **JSON**, and **TOML**.
 - **Simplified Shorthand**: Use a ultra-concise TOML-based shorthand for quick tests.
-- **Distributed Scale**: Built-in **Manager/Worker** mode for massive, coordinated load tests across clusters.
 - **Smart Validation**: Use `--dry-run` to verify configurations and file dependencies before execution.
 - **Integrated Mocking**: Spin up an assertion-based HTTP **Mock Server** based on your test configuration for functional verification.
 - **Dynamic Data**: Support for environment variable injection, CSV data sources, and macro-based fake data generation.
 - **Advanced Control Flow**: Support for hierarchical scenarios, weighted branching, and setup/teardown tasks.
-- **Observability**: First-class support for **Prometheus** metrics and **OpenTelemetry** tracing.
 - **Rich Reporting**: Generates CLI summaries, interactive HTML reports, and JUnit-compatible XML.
 
 ---
@@ -45,17 +43,6 @@ Run a standard Taurus YAML file:
 ./target/release/bzt-rs test.yaml
 ```
 
-### Distributed Mode
-Start a **Manager**:
-```bash
-./target/release/bzt-rs test.yaml --manager --expect-workers 3
-```
-
-Start a **Worker**:
-```bash
-./target/release/bzt-rs test.yaml --worker --manager-host 10.0.0.1
-```
-
 ### Validation & Mocking
 **Dry Run** (validate config only):
 ```bash
@@ -77,13 +64,8 @@ Start a **Worker**:
 | Argument | Description |
 |----------|-------------|
 | `<CONFIG>` | Path to `.yaml`, `.json`, or `.toml` configuration. |
-| `--manager` | Start in Manager mode for distributed testing. |
-| `--worker` | Start in Worker mode. |
-| `--expect-workers <N>` | (Manager only) Wait for N workers before starting. |
-| `--metrics` | Enable Prometheus metrics exporter. |
-| `--metrics-port <PORT>` | Port for Prometheus exporter (Default: 8080). |
-| `--dry-run` | Validate configuration and dependencies without execution. |
-| `--mock` | Start an internal HTTP mock server based on the config. |
+| `-d`, `--dry-run` | Validate configuration and dependencies without execution. |
+| `-m`, `--mock` | Start an internal HTTP mock server based on the config. |
 | `--mock-run` | Run the test configuration against an internal mock server. |
 
 ---
