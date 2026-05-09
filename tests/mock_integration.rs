@@ -30,21 +30,35 @@ scenarios:
     .unwrap();
 
     let mut child = Command::new("cargo")
-        .args(&["run", "--", config_path.to_str().unwrap(), "--mock"])
+        .args(["run", "--", config_path.to_str().unwrap(), "--mock"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to execute process");
 
-    // Give it a moment to start
-    sleep(Duration::from_secs(5)).await;
+    // Poll until the process exits or 5 seconds elapses
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                panic!("mock server exited prematurely with status: {status}");
+            }
+            Ok(None) => {
+                // Still running — what we want. Wait a bit then recheck.
+                if std::time::Instant::now() >= deadline {
+                    break;
+                }
+                sleep(Duration::from_millis(200)).await;
+            }
+            Err(e) => {
+                panic!("error checking mock server status: {e}");
+            }
+        }
+    }
 
-    // In a real test, we would parse the output to find the port,
-    // then send a request to /api/hello and verify the body.
-    // For now, we'll just check if it started without immediate error.
-
-    let status = child.try_wait().unwrap();
-    assert!(status.is_none()); // Still running
-
+    assert!(
+        child.try_wait().unwrap().is_none(),
+        "mock server should still be running"
+    );
     child.kill().expect("failed to kill mock server");
 }
 
@@ -73,7 +87,7 @@ scenarios:
     .unwrap();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", config_path.to_str().unwrap(), "--mock-run"])
+        .args(["run", "--", config_path.to_str().unwrap(), "--mock-run"])
         .output()
         .expect("failed to execute process");
 

@@ -2,7 +2,7 @@ mod common;
 
 use bzt_rs::engine::goose;
 use bzt_rs::models::config::{
-    Configuration, ExecutionPlan, HTTPRequestDefinition, ScenarioDefinition,
+    Configuration, DataSourceDefinition, ExecutionPlan, HTTPRequestDefinition, ScenarioDefinition,
 };
 use ntest::timeout;
 use std::collections::HashMap;
@@ -22,7 +22,8 @@ async fn test_csv_parameterization_integration() {
             ))],
             weight: 1,
             think_time: Some("100ms".to_string()),
-            data_sources: Some(vec!["users.csv".to_string()]),
+            data_sources: Some(vec![DataSourceDefinition::Simple("users.csv".to_string())]),
+            headers: None,
         },
     );
 
@@ -34,6 +35,7 @@ async fn test_csv_parameterization_integration() {
             scenario: "csv_test".to_string(),
             throughput: None,
             steps: None,
+            pacing: None,
         }],
         scenarios,
         reporting: vec![],

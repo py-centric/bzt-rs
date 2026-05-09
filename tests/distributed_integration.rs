@@ -21,6 +21,7 @@ async fn test_distributed_and_metrics_integration() {
             weight: 1,
             think_time: None,
             data_sources: None,
+            headers: None,
         },
     );
 
@@ -32,6 +33,7 @@ async fn test_distributed_and_metrics_integration() {
             scenario: "distributed_test".to_string(),
             throughput: None,
             steps: None,
+            pacing: None,
         }],
         scenarios,
         reporting: vec![],
@@ -44,7 +46,7 @@ async fn test_distributed_and_metrics_integration() {
         env::set_var("GOOSE_METRICS_PROMETHEUS", "true");
     }
 
-    let result: Result<(), String> = goose::run_attack(config).await;
+    let result = goose::run_attack(config).await;
     // Expected to pass since Goose will run but just not connect any workers if no actual run triggers wait
     // Or it might just run the test locally if manager flag isn't parsed cleanly in test mode
     assert!(result.is_ok());

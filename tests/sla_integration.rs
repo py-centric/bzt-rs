@@ -3,7 +3,7 @@ mod common;
 use bzt_rs::engine::goose;
 use bzt_rs::models::config::{
     AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HTTPRequestDefinition,
-    ScenarioDefinition,
+    ReportingDefinition, ScenarioDefinition, SlaAction, SlaCriterion, SlaMetric,
 };
 use ntest::timeout;
 use std::collections::HashMap;
@@ -22,6 +22,9 @@ async fn test_sla_and_pacing_integration() {
                 method: Some("GET".to_string()),
                 headers: None,
                 body: None,
+                label: None,
+                body_file: None,
+                timeout: None,
                 on_start: false,
                 think_time: None,
                 extract_jsonpath: None,
@@ -41,6 +44,7 @@ async fn test_sla_and_pacing_integration() {
             weight: 1,
             think_time: None,
             data_sources: None,
+            headers: None,
         },
     );
 
@@ -52,9 +56,31 @@ async fn test_sla_and_pacing_integration() {
             scenario: "sla_test".to_string(),
             throughput: None,
             steps: None,
+            pacing: None,
         }],
         scenarios,
-        reporting: vec![],
+        reporting: vec![ReportingDefinition {
+            module: "junit-xml".to_string(),
+            filename: Some("/tmp/bzt-sla-test-junit.xml".to_string()),
+            // fail-rate threshold of 5% — mock always returns 200, so this should pass
+            failed_threshold: Some(0.05),
+            sla: vec![
+                SlaCriterion {
+                    metric: SlaMetric::FailRate,
+                    threshold: 0.05,
+                    subject: None,
+                    duration: None,
+                    action: SlaAction::Warn,
+                },
+                SlaCriterion {
+                    metric: SlaMetric::AvgResponseTime,
+                    threshold: 5000.0,
+                    subject: None,
+                    duration: None,
+                    action: SlaAction::Warn,
+                },
+            ],
+        }],
     };
 
     let result = goose::run_attack(config).await;

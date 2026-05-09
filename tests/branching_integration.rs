@@ -24,6 +24,7 @@ async fn test_branching_and_weights_integration() {
             weight: 80,
             think_time: None,
             data_sources: None,
+            headers: None,
         },
     );
 
@@ -38,6 +39,7 @@ async fn test_branching_and_weights_integration() {
             weight: 20,
             think_time: None,
             data_sources: None,
+            headers: None,
         },
     );
 
@@ -50,6 +52,7 @@ async fn test_branching_and_weights_integration() {
                 scenario: "high_traffic".to_string(),
                 throughput: None,
                 steps: None,
+                pacing: None,
             },
             ExecutionPlan {
                 concurrency: 10,
@@ -58,6 +61,7 @@ async fn test_branching_and_weights_integration() {
                 scenario: "low_traffic".to_string(),
                 throughput: None,
                 steps: None,
+                pacing: None,
             },
         ],
         scenarios,

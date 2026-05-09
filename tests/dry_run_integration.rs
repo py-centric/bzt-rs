@@ -26,7 +26,7 @@ scenarios:
     .unwrap();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", config_path.to_str().unwrap(), "--dry-run"])
+        .args(["run", "--", config_path.to_str().unwrap(), "--dry-run"])
         .output()
         .expect("failed to execute process");
 
@@ -60,7 +60,7 @@ scenarios:
     .unwrap();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", config_path.to_str().unwrap(), "--dry-run"])
+        .args(["run", "--", config_path.to_str().unwrap(), "--dry-run"])
         .output()
         .expect("failed to execute process");
 
