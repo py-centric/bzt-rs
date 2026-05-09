@@ -1,0 +1,33 @@
+# POST requests with inline JSON bodies
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 8s
+    scenario: post-test
+
+scenarios:
+  post-test:
+    requests:
+      - url: /api/login
+        method: POST
+        label: login
+        headers:
+          Content-Type: application/json
+        body: '{"username": "admin", "password": "hunter2"}'
+        assert:
+          - subject: body
+            contains: ["token"]
+
+      - url: /api/orders
+        method: POST
+        label: create_order
+        headers:
+          Content-Type: application/json
+          Authorization: Bearer test-token
+        body: '{"product_id": 42, "quantity": 1}'
+        assert:
+          - subject: body
+            contains: ["order_id", "confirmed"]
+
+# Usage:
+#   cargo run -- examples/02-post-with-body.yaml --mock-run

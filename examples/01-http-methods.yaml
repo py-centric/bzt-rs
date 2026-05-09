@@ -1,0 +1,57 @@
+# All supported HTTP methods
+execution:
+  - concurrency: 3
+    ramp-up: 2s
+    hold-for: 10s
+    scenario: method-test
+
+scenarios:
+  method-test:
+    requests:
+      - url: /api/items
+        method: GET
+        label: list_items
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/items
+        method: POST
+        label: create_item
+        body: '{"name": "new item"}'
+        assert:
+          - subject: body
+            contains: ["created"]
+
+      - url: /api/items/1
+        method: PUT
+        label: update_item
+        body: '{"name": "updated"}'
+        assert:
+          - subject: body
+            contains: ["updated"]
+
+      - url: /api/items/1
+        method: PATCH
+        label: patch_item
+        body: '{"status": "active"}'
+        assert:
+          - subject: body
+            contains: ["patched"]
+
+      - url: /api/items/1
+        method: DELETE
+        label: delete_item
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/health
+        method: HEAD
+        label: health_check
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/01-http-methods.yaml --mock-run

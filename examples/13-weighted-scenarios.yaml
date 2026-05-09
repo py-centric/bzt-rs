@@ -1,0 +1,46 @@
+# Weighted scenarios — 80% traffic to main, 20% to canary
+execution:
+  - concurrency: 10
+    ramp-up: 3s
+    hold-for: 15s
+    scenario: main-api
+  - concurrency: 10
+    ramp-up: 3s
+    hold-for: 15s
+    scenario: canary-api
+
+scenarios:
+  main-api:
+    weight: 80
+    requests:
+      - url: /api/v1/status
+        method: GET
+        label: v1_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+      - url: /api/v1/items
+        method: GET
+        label: v1_items
+        assert:
+          - subject: body
+            contains: ["items"]
+
+  canary-api:
+    weight: 20
+    requests:
+      - url: /api/v2/status
+        method: GET
+        label: v2_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+      - url: /api/v2/items
+        method: GET
+        label: v2_items
+        assert:
+          - subject: body
+            contains: ["items"]
+
+# Usage:
+#   cargo run -- examples/13-weighted-scenarios.yaml --mock-run

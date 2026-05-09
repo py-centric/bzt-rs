@@ -1,0 +1,30 @@
+# Pacing / rate limiting — 5 requests per second
+execution:
+  - concurrency: 2
+    ramp-up: 2s
+    hold-for: 12s
+    scenario: paced-test
+    pacing:
+      rate: 5
+      per: 1s
+      randomize: true
+
+scenarios:
+  paced-test:
+    requests:
+      - url: /api/status
+        method: GET
+        label: paced_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/items
+        method: GET
+        label: paced_items
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/06-pacing.yaml --mock-run

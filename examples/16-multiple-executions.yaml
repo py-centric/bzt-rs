@@ -1,0 +1,45 @@
+# Multiple execution blocks — different scenarios, different concurrency
+execution:
+  - concurrency: 5
+    ramp-up: 3s
+    hold-for: 15s
+    scenario: high-traffic
+  - concurrency: 2
+    ramp-up: 5s
+    hold-for: 15s
+    scenario: low-traffic
+
+scenarios:
+  high-traffic:
+    requests:
+      - url: /api/status
+        method: GET
+        label: ht_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+      - url: /api/items
+        method: GET
+        label: ht_items
+        assert:
+          - subject: body
+            contains: ["items"]
+
+  low-traffic:
+    requests:
+      - url: /api/admin/audit
+        method: GET
+        label: lt_audit
+        assert:
+          - contains: ["200"]
+            subject: http-code
+      - url: /api/admin/report
+        method: POST
+        label: lt_report
+        body: '{"type": "summary"}'
+        assert:
+          - subject: body
+            contains: ["report"]
+
+# Usage:
+#   cargo run -- examples/16-multiple-executions.yaml --mock-run

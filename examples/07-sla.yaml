@@ -1,0 +1,42 @@
+# SLA thresholds against mock server
+execution:
+  - concurrency: 5
+    ramp-up: 2s
+    hold-for: 15s
+    scenario: sla-test
+
+scenarios:
+  sla-test:
+    requests:
+      - url: /api/status
+        method: GET
+        label: sla_status
+        assert:
+          - subject: body
+            contains: ["OK"]
+
+      - url: /api/items
+        method: POST
+        label: sla_create
+        body: '{"name": "test"}'
+        assert:
+          - subject: body
+            contains: ["created"]
+
+reporting:
+  - module: junit-xml
+    filename: /tmp/bzt-sla-results.xml
+    failed-threshold: 0.05
+    sla:
+      - metric: fail-rate
+        threshold: 0.05
+        action: warn
+      - metric: avg-response-time
+        threshold: 2000.0
+        action: warn
+      - metric: p95-response-time
+        threshold: 5000.0
+        action: warn
+
+# Usage:
+#   cargo run -- examples/07-sla.yaml --mock-run

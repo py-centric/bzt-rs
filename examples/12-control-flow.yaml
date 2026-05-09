@@ -1,0 +1,49 @@
+# Control flow: conditions and polling loops
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 12s
+    scenario: flow-test
+
+scenarios:
+  flow-test:
+    requests:
+      # Always execute — get session
+      - url: /api/session
+        method: POST
+        label: init_session
+        body: '{"init": true}'
+        assert:
+          - subject: body
+            contains: ["session_id"]
+        extract-jsonpath:
+          sessionId: $.session_id
+
+      # Conditional — only if we have a session
+      - url: /api/dashboard
+        method: GET
+        label: conditional_dashboard
+        headers:
+          X-Session: ${sessionId}
+        if: '"${sessionId}" != ""'
+        assert:
+          - contains: ["200"]
+            subject: http-code
+        extract-jsonpath:
+          dashboardStatus: $.status
+
+      # Polling loop — wait until ready
+      - url: /api/process/status
+        method: GET
+        label: poll_process
+        headers:
+          X-Session: ${sessionId}
+        loop: '"${processStatus}" == "running"'
+        assert:
+          - contains: ["200"]
+            subject: http-code
+        extract-jsonpath:
+          processStatus: $.status
+
+# Usage:
+#   cargo run -- examples/12-control-flow.yaml --mock-run

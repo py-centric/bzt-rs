@@ -1,0 +1,51 @@
+# Response assertions — mock server verifies these
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 8s
+    scenario: assert-test
+
+scenarios:
+  assert-test:
+    requests:
+      # Assert HTTP status code
+      - url: /api/items
+        method: GET
+        label: assert_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      # Assert response body content
+      - url: /api/greeting
+        method: GET
+        label: assert_body
+        assert:
+          - subject: body
+            contains: ["Hello", "Welcome"]
+
+      # Assert multiple conditions
+      - url: /api/user/profile
+        method: GET
+        label: assert_multi
+        assert:
+          - contains: ["200"]
+            subject: http-code
+          - subject: body
+            contains: ["name", "email", "role"]
+            not: false
+          - subject: body
+            contains: ["error"]
+            not: true
+
+      # Regex assertion
+      - url: /api/version
+        method: GET
+        label: assert_regex
+        assert:
+          - subject: body
+            contains: ["\\d+\\.\\d+\\.\\d+"]
+            regexp: true
+
+# Usage:
+#   cargo run -- examples/11-assertions.yaml --mock-run

@@ -1,0 +1,37 @@
+# Custom labels and request timeouts
+execution:
+  - concurrency: 3
+    ramp-up: 1s
+    hold-for: 10s
+    scenario: label-test
+
+scenarios:
+  label-test:
+    requests:
+      - url: /api/status
+        method: GET
+        label: Health Check
+        timeout: 5s
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/slow-endpoint
+        method: GET
+        label: Slow Data Query
+        timeout: 30s
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/report
+        method: POST
+        label: Generate Report
+        body: '{"format": "pdf"}'
+        timeout: 60s
+        assert:
+          - subject: body
+            contains: ["report"]
+
+# Usage:
+#   cargo run -- examples/08-labels-timeouts.yaml --mock-run

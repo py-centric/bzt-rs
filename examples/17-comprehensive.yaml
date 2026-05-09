@@ -1,0 +1,125 @@
+# Comprehensive example — all features combined
+execution:
+  - concurrency: 10
+    ramp-up: 5s
+    hold-for: 30s
+    scenario: e2e-flow
+    pacing:
+      rate: 20
+      per: 1s
+      randomize: true
+
+scenarios:
+  e2e-flow:
+    think-time: 200ms
+    headers:
+      Accept: application/json
+      X-Client: bzt-rs-e2e
+    data-sources:
+      - path: examples/data/users.csv
+        delimiter: ","
+        quoted: true
+        loop_data: true
+        ordered: true
+
+    requests:
+      # 1. Login
+      - url: /api/login
+        method: POST
+        label: Login
+        timeout: 10s
+        headers:
+          Content-Type: application/json
+        body: '{"user": "${username}", "pass": "${password}"}'
+        assert:
+          - subject: body
+            contains: ["token", "session"]
+        extract-jsonpath:
+          authToken: $.token
+
+      # 2. Profile (conditional on successful login)
+      - url: /api/profile
+        method: GET
+        label: Get Profile
+        timeout: 5s
+        headers:
+          Authorization: "Bearer ${authToken}"
+        if: '"${authToken}" != ""'
+        assert:
+          - contains: ["200"]
+            subject: http-code
+        extract-jsonpath:
+          userId: $.id
+        think-time: 500ms
+
+      # 3. Browse products
+      - url: /api/products
+        method: GET
+        label: Browse Products
+        timeout: 10s
+        headers:
+          Authorization: "Bearer ${authToken}"
+        assert:
+          - subject: body
+            contains: ["products"]
+        extract-jsonpath:
+          firstProduct: $.products[0].id
+
+      # 4. Create order (conditional on existing product)
+      - url: /api/orders
+        method: POST
+        label: Create Order
+        timeout: 15s
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer ${authToken}"
+        body: '{"user_id": "${userId}", "product_id": "${firstProduct}", "quantity": 1}'
+        if: '"${firstProduct}" != "" && "${userId}" != ""'
+        assert:
+          - subject: body
+            contains: ["order_id", "confirmed"]
+        extract-jsonpath:
+          orderId: $.order_id
+
+      # 5. Poll order status
+      - url: /api/orders/${orderId}
+        method: GET
+        label: Poll Order
+        timeout: 30s
+        headers:
+          Authorization: "Bearer ${authToken}"
+        loop: '"${orderStatus}" == "processing"'
+        assert:
+          - contains: ["200"]
+            subject: http-code
+        extract-jsonpath:
+          orderStatus: $.status
+
+      # 6. Logout
+      - url: /api/logout
+        method: POST
+        label: Logout
+        timeout: 5s
+        headers:
+          Authorization: "Bearer ${authToken}"
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+reporting:
+  - module: junit-xml
+    filename: /tmp/bzt-e2e-results.xml
+    failed-threshold: 0.05
+    sla:
+      - metric: fail-rate
+        threshold: 0.05
+        action: stop
+      - metric: avg-response-time
+        threshold: 3000.0
+        action: warn
+      - metric: p95-response-time
+        threshold: 8000.0
+        action: warn
+
+# Usage:
+#   cargo run -- examples/17-comprehensive.yaml --mock-run

@@ -1,0 +1,32 @@
+# POST with body loaded from external file
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 8s
+    scenario: body-file-test
+
+scenarios:
+  body-file-test:
+    requests:
+      - url: /api/login
+        method: POST
+        label: login_from_file
+        headers:
+          Content-Type: application/json
+        body-file: examples/payloads/login.json
+        assert:
+          - subject: body
+            contains: ["admin"]
+
+      - url: /api/orders
+        method: POST
+        label: order_from_file
+        headers:
+          Content-Type: application/json
+        body-file: examples/payloads/order.json
+        assert:
+          - subject: body
+            contains: ["product_id", "quantity"]
+
+# Usage (run from examples/ directory):
+#   cargo run -- examples/03-body-file.yaml --mock-run

@@ -1,0 +1,18 @@
+# Shorthand TOML format — ultra-concise
+[execution]
+concurrency = 3
+ramp-up = "2s"
+hold-for = "10s"
+scenario = "quick"
+
+[scenarios.quick]
+requests = [
+    "http://localhost:8080/api/status",
+    "http://localhost:8080/api/health"
+]
+
+# Usage:
+#   cargo run -- examples/15-shorthand.toml --mock-run
+#
+# Note: shorthand TOML doesn't support assertions,
+# so mock returns (200, "OK") for simple URL format.

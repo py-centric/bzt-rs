@@ -1,0 +1,35 @@
+# CSV data parameterization with mock server
+# Each virtual user gets a row from the CSV
+execution:
+  - concurrency: 4
+    ramp-up: 2s
+    hold-for: 10s
+    scenario: csv-test
+
+scenarios:
+  csv-test:
+    data-sources:
+      - examples/data/users.csv       # columns: username,password,role
+
+    requests:
+      - url: /api/login
+        method: POST
+        label: csv_login
+        headers:
+          Content-Type: application/json
+        body: '{"user": "${username}", "pass": "${password}"}'
+        assert:
+          - subject: body
+            contains: ["token"]
+
+      - url: /api/user/${username}/dashboard
+        method: GET
+        label: user_dashboard
+        headers:
+          X-Role: ${role}
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/05-csv-parameterization.yaml --mock-run

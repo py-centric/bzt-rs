@@ -1,0 +1,38 @@
+# Think time between requests — simulates real user pauses
+execution:
+  - concurrency: 3
+    ramp-up: 2s
+    hold-for: 12s
+    scenario: think-test
+
+scenarios:
+  think-test:
+    think-time: 500ms
+    requests:
+      - url: /api/login
+        method: POST
+        label: think_login
+        body: '{"user": "test"}'
+        think-time: 1s-3s   # Per-request think time (range)
+        assert:
+          - subject: body
+            contains: ["token"]
+
+      - url: /api/search?q=widget
+        method: GET
+        label: think_search
+        think-time: 2s       # Per-request fixed think time
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/logout
+        method: POST
+        label: think_logout
+        # No per-request think time — uses scenario default
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/14-think-time.yaml --mock-run

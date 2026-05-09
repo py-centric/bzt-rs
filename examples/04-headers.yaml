@@ -1,0 +1,37 @@
+# Scenario-level and per-request headers
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 8s
+    scenario: headers-test
+
+scenarios:
+  headers-test:
+    # Scenario-level headers applied to ALL requests
+    headers:
+      Accept: application/json
+      X-Client: bzt-rs
+
+    requests:
+      - url: /api/profile
+        method: GET
+        label: get_profile
+        # Per-request headers merged with scenario headers
+        headers:
+          Authorization: Bearer session-token
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: /api/admin
+        method: GET
+        label: admin_only
+        headers:
+          Authorization: Bearer admin-token
+          X-Admin: "true"
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/04-headers.yaml --mock-run

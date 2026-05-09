@@ -1,0 +1,14 @@
+# Minimal smoke test — run against mock server
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 5s
+    scenario: smoke
+
+scenarios:
+  smoke:
+    requests:
+      - https://jsonplaceholder.typicode.com/posts/1
+
+# Usage:
+#   cargo run -- examples/00-basic-get.yaml

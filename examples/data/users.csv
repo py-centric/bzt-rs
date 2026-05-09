@@ -1,0 +1,5 @@
+username,password,role
+alice,pass123,admin
+bob,pass456,user
+carol,pass789,user
+dave,pass000,viewer

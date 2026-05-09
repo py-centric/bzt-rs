@@ -1,0 +1,30 @@
+# Environment variable injection
+# Set API_HOST before running:
+#   export API_HOST=http://localhost:8080
+#   cargo run -- examples/09-env-vars.yaml
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 8s
+    scenario: env-test
+
+scenarios:
+  env-test:
+    requests:
+      - url: "${env.API_HOST}/api/status"
+        method: GET
+        label: env_status
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+      - url: "${env.API_HOST}/api/version"
+        method: GET
+        label: env_version
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# With --mock-run the host is overridden to the mock server automatically.
+# Usage:
+#   cargo run -- examples/09-env-vars.yaml --mock-run

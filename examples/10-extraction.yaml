@@ -1,0 +1,45 @@
+# Response extraction (JSONPath) and variable reuse
+execution:
+  - concurrency: 2
+    ramp-up: 1s
+    hold-for: 10s
+    scenario: extract-test
+
+scenarios:
+  extract-test:
+    requests:
+      # Step 1: Login and extract token
+      - url: /api/login
+        method: POST
+        label: login_extract
+        body: '{"username": "admin", "password": "pass"}'
+        assert:
+          - subject: body
+            contains: ["token", "session"]
+        extract-jsonpath:
+          authToken: $.token
+
+      # Step 2: Use extracted token in Authorization header
+      - url: /api/profile
+        method: GET
+        label: profile_extract
+        headers:
+          Authorization: "Bearer ${authToken}"
+        assert:
+          - contains: ["200"]
+            subject: http-code
+        extract-regexp:
+          userId: "id=([0-9]+)"
+
+      # Step 3: Use both extracted values
+      - url: /api/users/${userId}
+        method: GET
+        label: user_detail
+        headers:
+          Authorization: "Bearer ${authToken}"
+        assert:
+          - contains: ["200"]
+            subject: http-code
+
+# Usage:
+#   cargo run -- examples/10-extraction.yaml --mock-run
