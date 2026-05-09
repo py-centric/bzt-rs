@@ -30,9 +30,21 @@ Key Features
 
 * **Dynamic Task Engine**: Evaluates dynamic data, macros, and control flow.
 
-* **Metrics Exporter**: Pushes data to Prometheus, BlazeMeter, and JUnit XML.
+* **Structured Error Handling**: Typed ``BztError`` with context, file paths,
+  and source chaining for actionable diagnostics.
 
-* **Cluster Coordinator**: Manages distributed load generation.
+* **Security Hardening**: Path traversal prevention, 100MB file size limits,
+  sensitive env var masking, ``deny_unknown_fields`` on config structs.
+
+* **Environment & Pacing**: ``${env.VAR}`` resolution with priority chain,
+  fixed-rate and randomized throughput enforcement.
+
+* **SLA Evaluation**: Pass/fail criteria with Stop/Warn/Continue actions
+  (fail-rate, average response time, p90/p95/p99, throughput).
+
+* **CLI Reporter**: Post-test ASCII summary table with per-endpoint metrics.
+
+* **Reporting**: JUnit XML output for CI/CD integration.
 
 Indices and tables
 ==================

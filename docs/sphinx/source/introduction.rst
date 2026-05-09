@@ -10,7 +10,7 @@ resource overhead and maximum reliability.
 Core Vision
 -----------
 The vision for bzt-rs is to provide a zero-dependency, single-binary execution
-engine that can scale from simple local tests to massive distributed clusters.
+engine that scales from simple local tests to complex CI/CD pipelines.
 By combining the user-friendly YAML/JSON/TOML syntax of Taurus with the
 unparalleled performance of Rust and the Goose engine, bzt-rs offers a
 modern alternative for performance engineering.
@@ -28,17 +28,17 @@ Design Principles
   abstractions, bzt-rs maintains a runtime overhead of < 5% compared to native
   Goose implementations.
 
-* **Scalability by Default**: Built-in support for distributed Manager/Worker
-  modes for large-scale load generation.
+* **Reliability-First**: Robust error handling with structured error types,
+  path traversal prevention, file size limits, and sensitive environment
+  variable masking ensure safe operation.
 
-* **Observability-Centric**: Deep integration with Prometheus and
-  OpenTelemetry for real-time monitoring and tracing.
+* **Observability-Centric**: Post-test CLI summary reports with per-endpoint
+  latency percentiles, SLA evaluation, and JUnit XML output for CI/CD.
 
 System Architecture
 -------------------
 The bzt-rs system is built around a modular pipeline that processes
 configuration files into an executable load test:
-
 
 1. **Multi-Format Parser**: Deserializes input files (YAML, JSON, TOML) into
    format-specific internal structures.
@@ -49,14 +49,30 @@ configuration files into an executable load test:
 3. **Validation Engine**: Performs "dry-run" checks to verify configuration
    syntax and ensure all external dependencies (e.g., CSV files) are present.
 
-4. **Mock Server**: An assertion-aware HTTP server that dynamically simulates
-   backend responses for isolated functional testing of scenarios.
+4. **Security Checks**: Validates file paths (traversal prevention), file
+   sizes (100MB limit), and environment variable exposure (blocklist masking).
 
-5. **State Translator**: Maps the internal AST into Goose-native execution
-   tasks, scenarios, and transaction sets.
+5. **Mock Server**: An assertion-aware HTTP server binding to ``127.0.0.1``
+   that dynamically simulates backend responses for isolated functional
+   testing of scenarios.
 
-6. **Goose Engine**: The high-concurrency execution wrapper that performs
+6. **Environment Loader**: Resolves ``${env.VAR}`` references with a priority
+   chain (CLI > system env > ``.env`` file > defaults).
+
+7. **Pacing Engine**: Enforces fixed-rate or randomized throughput limits
+   between requests.
+
+8. **State Translator**: Maps the internal AST into Goose-native execution
+   tasks, scenarios, and transaction sets. Supports all standard HTTP methods
+   (GET, POST, PUT, DELETE, PATCH, HEAD).
+
+9. **Goose Engine**: The high-concurrency execution wrapper that performs
    the actual load generation and metric collection.
 
-7. **Reporting & Observability**: Post-processes metrics into various
-   formats including JUnit XML, Prometheus metrics, and console summaries.
+10. **SLA Engine**: Evaluates pass/fail criteria (fail-rate, response time
+    percentiles, throughput) and dispatches Stop/Warn/Continue actions.
+
+11. **CLI Reporter**: Produces a post-test ASCII summary table with per-endpoint
+    metrics (requests, failures, average latency, p95/p99).
+
+12. **JUnit Reporter**: Generates XML test reports for CI/CD integration.
