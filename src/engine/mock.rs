@@ -62,13 +62,14 @@ async fn handle_mock_request(
         format!("/{path}")
     };
 
-    tracing::debug!("Mock request: {} {}", method, path);
+    tracing::info!("[MOCK] Request: {} {}", method, path);
 
     for scenario in config.scenarios.values() {
         for req_def in &scenario.requests {
             match req_def {
                 HTTPRequestDefinition::Simple(url) => {
                     if url == &path && method == Method::GET {
+                        tracing::info!("[MOCK] Response: {} {} -> 200 OK", method, path);
                         return (StatusCode::OK, "OK").into_response();
                     }
                 }
@@ -81,8 +82,21 @@ async fn handle_mock_request(
                         .unwrap_or(Method::GET);
                     if d.url == path && method == req_method {
                         let mock_res = generate_mock_response(d);
+                        let status = mock_res.status;
+                        let body_preview = if mock_res.body.len() > 200 {
+                            format!("{}... ({} bytes)", &mock_res.body[..200], mock_res.body.len())
+                        } else {
+                            mock_res.body.clone()
+                        };
+                        tracing::info!(
+                            "[MOCK] Response: {} {} -> {} body={:?}",
+                            method,
+                            path,
+                            status,
+                            body_preview
+                        );
                         return (
-                            StatusCode::from_u16(mock_res.status).unwrap_or(StatusCode::OK),
+                            StatusCode::from_u16(status).unwrap_or(StatusCode::OK),
                             mock_res.body,
                         )
                             .into_response();
@@ -92,6 +106,7 @@ async fn handle_mock_request(
         }
     }
 
+    tracing::info!("[MOCK] Response: {} {} -> 404 Not Found", method, path);
     StatusCode::NOT_FOUND.into_response()
 }
 
