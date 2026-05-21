@@ -1,0 +1,27 @@
+# XPath Extraction Example
+
+This example demonstrates how to extract variables from complex XML responses using XPath 2.0.
+
+```yaml
+execution:
+  - concurrency: 2
+    hold-for: 5s
+    scenario: xml_test
+
+scenarios:
+  xml_test:
+    requests:
+      - url: https://www.w3schools.com/xml/note.xml
+        method: GET
+        extract-xpath:
+          recipient: "//to/text()"
+          sender: "//from/text()"
+          subject: "//heading/text()"
+        assert:
+          - contains: ["Tove"]
+            subject: body
+      
+      - url: "https://httpbin.org/get?msg=Hello%20${recipient}"
+        method: GET
+        label: "verify_extraction"
+```

@@ -1,0 +1,41 @@
+# Dynamic gRPC Load Test Example
+
+This example demonstrates how to test gRPC services using runtime reflection.
+
+```yaml
+execution:
+  - concurrency: 10
+    ramp-up: 5s
+    hold-for: 20s
+    scenario: grpc_performance
+
+scenarios:
+  grpc_performance:
+    requests:
+      - url: grpc://localhost:50051
+        protocol: grpc
+        method-name: bzt_mock.MockService/Call
+        body: '{"method": "unary_test", "payload": "data-${uuid}"}'
+        assert:
+          - contains: ["Mock response"]
+            subject: body
+      
+      - url: grpc://localhost:50051
+        protocol: grpc
+        method-name: bzt_mock.MockService/ServerStream
+        grpc-mode: server-streaming
+        body: '{"method": "stream_test", "payload": "start"}'
+        assert:
+          - contains: ["Part"]
+            subject: body
+```
+
+## Running the test
+
+`bzt-rs` will automatically perform gRPC reflection to discover the service schema.
+
+1. Start the integrated gRPC mock server:
+   `bzt-rs examples/19-grpc-dynamic.yaml --mock`
+
+2. In a separate terminal, run the test:
+   `bzt-rs examples/19-grpc-dynamic.yaml`

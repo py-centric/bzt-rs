@@ -39,6 +39,10 @@ cargo run -- examples/00-basic-get.yaml
 | 15 | `15-shorthand.toml` | Ultra-concise TOML shorthand format |
 | 16 | `16-multiple-executions.yaml` | Two execution blocks with different scenarios |
 | 17 | `17-comprehensive.yaml` | All features combined — full e2e journey |
+| 18 | `18-websocket.yaml` | WebSocket bidirectional message testing |
+| 19 | `19-grpc-dynamic.yaml` | Dynamic gRPC reflection (Unary + Streaming) |
+| 20 | `20-xpath-extraction.yaml` | XPath 2.0 extraction from XML responses |
+| 21 | `21-influxdb-realtime.yaml` | Real-time observability with distributed InfluxDB shipping |
 
 ## Fixture Files
 

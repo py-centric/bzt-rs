@@ -1,0 +1,29 @@
+# WebSocket Load Test Example
+
+This example demonstrates how to test real-time bidirectional communication using WebSockets.
+
+```yaml
+execution:
+  - concurrency: 5
+    ramp-up: 2s
+    hold-for: 10s
+    scenario: chat_simulation
+
+scenarios:
+  chat_simulation:
+    requests:
+      - url: ws://localhost:8080/chat
+        protocol: websocket
+        message: "Hello from bzt-rs ${uuid}"
+        assert:
+          - contains: ["Welcome", "Echo"]
+            subject: body
+```
+
+## Running the test
+
+1. Start the integrated mock server:
+   `bzt-rs examples/18-websocket.yaml --mock`
+
+2. In a separate terminal, run the test:
+   `bzt-rs examples/18-websocket.yaml`
