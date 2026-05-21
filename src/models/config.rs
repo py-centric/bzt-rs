@@ -104,6 +104,8 @@ pub struct DetailedRequest {
     pub extract_jsonpath: Option<HashMap<String, String>>,
     #[serde(rename = "extract-regexp")]
     pub extract_regexp: Option<HashMap<String, String>>,
+    #[serde(rename = "extract-xpath")]
+    pub extract_xpath: Option<HashMap<String, String>>,
     #[serde(default)]
     pub assert: Vec<AssertionDefinition>,
     /// Protocol override (e.g. "websocket", "grpc")
@@ -112,6 +114,10 @@ pub struct DetailedRequest {
     pub message: Option<String>,
     /// gRPC service method
     pub method_name: Option<String>,
+    #[serde(rename = "grpc-mode")]
+    pub grpc_mode: Option<String>,
+    #[serde(default)]
+    pub messages: Vec<String>,
     /// Conditional execution: `variable_name` == value
     #[serde(rename = "if")]
     pub execute_if: Option<String>,
@@ -194,6 +200,11 @@ fn default_subject() -> String {
 pub struct ReportingDefinition {
     pub module: String,
     pub filename: Option<String>,
+    pub url: Option<String>,
+    pub token: Option<String>,
+    pub org: Option<String>,
+    pub bucket: Option<String>,
+    pub interval: Option<String>,
     #[serde(rename = "failed-threshold")]
     pub failed_threshold: Option<f32>,
     #[serde(default)]

@@ -2,6 +2,8 @@ use regex::Regex;
 use serde_json::Value;
 use serde_json_path::JsonPath;
 use std::collections::HashMap;
+use sxd_document::parser;
+use sxd_xpath::{Context, Factory, Value as XPathValue};
 
 #[derive(Default, Debug)]
 pub struct UserSession {
@@ -47,6 +49,54 @@ impl ExtractionEngine {
             }
         }
     }
+
+    pub fn extract_xpath(body: &str, rules: &HashMap<String, String>, session: &mut UserSession) {
+        let package = match parser::parse(body) {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!("[XPATH] Failed to parse XML body: {}", e);
+                return;
+            }
+        };
+        let document = package.as_document();
+        let factory = Factory::new();
+
+        for (var_name, xpath_str) in rules {
+            let xpath = match factory.build(xpath_str) {
+                Ok(Some(x)) => x,
+                Ok(None) => {
+                    tracing::warn!("[XPATH] XPath expression returned None: {}", xpath_str);
+                    continue;
+                }
+                Err(e) => {
+                    tracing::warn!("[XPATH] Invalid XPath expression '{}': {}", xpath_str, e);
+                    continue;
+                }
+            };
+
+            let context = Context::new();
+            match xpath.evaluate(&context, document.root()) {
+                Ok(value) => {
+                    let result = match value {
+                        XPathValue::Nodeset(ns) => {
+                            if let Some(node) = ns.document_order().first() {
+                                node.string_value()
+                            } else {
+                                continue;
+                            }
+                        }
+                        XPathValue::Boolean(b) => b.to_string(),
+                        XPathValue::Number(n) => n.to_string(),
+                        XPathValue::String(s) => s,
+                    };
+                    session.variables.insert(var_name.clone(), result);
+                }
+                Err(e) => {
+                    tracing::warn!("[XPATH] Failed to evaluate XPath '{}': {}", xpath_str, e);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -71,5 +121,17 @@ mod tests {
         let mut session = UserSession::default();
         ExtractionEngine::extract_regex(body, &rules, &mut session);
         assert_eq!(session.variables.get("token").unwrap(), "abc-123-def");
+    }
+
+    #[test]
+    fn test_extract_xpath() {
+        let body = r#"<bookstore><book category="cooking"><title lang="en">Everyday Italian</title><price>30.00</price></book></bookstore>"#;
+        let mut rules = HashMap::new();
+        rules.insert("title".to_string(), "//book[@category='cooking']/title/text()".to_string());
+        rules.insert("price".to_string(), "//price/text()".to_string());
+        let mut session = UserSession::default();
+        ExtractionEngine::extract_xpath(body, &rules, &mut session);
+        assert_eq!(session.variables.get("title").unwrap(), "Everyday Italian");
+        assert_eq!(session.variables.get("price").unwrap(), "30.00");
     }
 }
