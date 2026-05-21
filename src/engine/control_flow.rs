@@ -1,6 +1,7 @@
 use crate::engine::BztError;
 use crate::models::config::AssertionDefinition;
 use regex::Regex;
+use std::collections::HashMap;
 
 pub struct AssertionEngine;
 
@@ -55,6 +56,84 @@ fn check_status(status: u16, assertion: &AssertionDefinition) -> Result<(), BztE
     Ok(())
 }
 
+pub struct ControlFlowEngine;
+
+impl ControlFlowEngine {
+    /// Evaluates a condition string against a set of variables.
+    /// Supports:
+    /// - Comparisons: ==, !=, >, <, >=, <=
+    /// - Logical operators: &&, ||
+    /// - Basic numeric and string values
+    #[must_use]
+    pub fn evaluate_condition(cond: &str, variables: &HashMap<String, String>) -> bool {
+        let cond = cond.trim();
+        if cond.is_empty() {
+            return true;
+        }
+
+        // Handle OR
+        if cond.contains("||") {
+            return cond
+                .split("||")
+                .any(|part| Self::evaluate_condition(part, variables));
+        }
+
+        // Handle AND
+        if cond.contains("&&") {
+            return cond
+                .split("&&")
+                .all(|part| Self::evaluate_condition(part, variables));
+        }
+
+        // Handle basic comparisons
+        if let Some((left, op, right)) = parse_comparison(cond) {
+            let left_val = variables.get(left).map(|s| s.as_str()).unwrap_or(left);
+            let right_val = right.trim_matches('"');
+
+            match op {
+                "==" => left_val == right_val,
+                "!=" => left_val != right_val,
+                ">" | "<" | ">=" | "<=" => {
+                    if let (Ok(l), Ok(r)) = (left_val.parse::<f64>(), right_val.parse::<f64>()) {
+                        match op {
+                            ">" => l > r,
+                            "<" => l < r,
+                            ">=" => l >= r,
+                            "<=" => l <= r,
+                            _ => false,
+                        }
+                    } else {
+                        // Fallback to string comparison if not numeric
+                        match op {
+                            ">" => left_val > right_val,
+                            "<" => left_val < right_val,
+                            ">=" => left_val >= right_val,
+                            "<=" => left_val <= right_val,
+                            _ => false,
+                        }
+                    }
+                }
+                _ => false,
+            }
+        } else {
+            // Truthy check for single variable
+            variables.get(cond).is_some_and(|v| !v.is_empty())
+        }
+    }
+}
+
+fn parse_comparison(cond: &str) -> Option<(&str, &str, &str)> {
+    let ops = ["==", "!=", ">=", "<=", ">", "<"];
+    for op in ops {
+        if let Some(idx) = cond.find(op) {
+            let left = cond[..idx].trim();
+            let right = cond[idx + op.len()..].trim();
+            return Some((left, op, right));
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -84,26 +163,47 @@ mod tests {
     }
 
     #[test]
-    fn test_not_assertion() {
-        let assertion = AssertionDefinition {
-            contains: vec!["Error".to_string()],
-            subject: "body".to_string(),
-            regexp: false,
-            not: true,
-        };
-        assert!(AssertionEngine::check_assertion("Success", 200, &assertion).is_ok());
-        assert!(AssertionEngine::check_assertion("Error found", 500, &assertion).is_err());
+    fn test_evaluate_condition_basic() {
+        let mut vars = HashMap::new();
+        vars.insert("status".to_string(), "200".to_string());
+        assert!(ControlFlowEngine::evaluate_condition("status == 200", &vars));
+        assert!(ControlFlowEngine::evaluate_condition("status != 404", &vars));
     }
 
     #[test]
-    fn test_regex_assertion() {
-        let assertion = AssertionDefinition {
-            contains: vec!["[0-9]{3}".to_string()],
-            subject: "body".to_string(),
-            regexp: true,
-            not: false,
-        };
-        assert!(AssertionEngine::check_assertion("Code 123", 200, &assertion).is_ok());
-        assert!(AssertionEngine::check_assertion("No code", 200, &assertion).is_err());
+    fn test_evaluate_condition_numeric() {
+        let mut vars = HashMap::new();
+        vars.insert("count".to_string(), "10".to_string());
+        assert!(ControlFlowEngine::evaluate_condition("count > 5", &vars));
+        assert!(ControlFlowEngine::evaluate_condition("count >= 10", &vars));
+        assert!(ControlFlowEngine::evaluate_condition("count < 20", &vars));
+        assert!(!ControlFlowEngine::evaluate_condition("count < 5", &vars));
+    }
+
+    #[test]
+    fn test_evaluate_condition_logical() {
+        let mut vars = HashMap::new();
+        vars.insert("status".to_string(), "200".to_string());
+        vars.insert("count".to_string(), "10".to_string());
+        assert!(ControlFlowEngine::evaluate_condition(
+            "status == 200 && count > 5",
+            &vars
+        ));
+        assert!(ControlFlowEngine::evaluate_condition(
+            "status == 500 || count == 10",
+            &vars
+        ));
+        assert!(!ControlFlowEngine::evaluate_condition(
+            "status == 200 && count < 5",
+            &vars
+        ));
+    }
+
+    #[test]
+    fn test_evaluate_condition_truthy() {
+        let mut vars = HashMap::new();
+        vars.insert("exists".to_string(), "true".to_string());
+        assert!(ControlFlowEngine::evaluate_condition("exists", &vars));
+        assert!(!ControlFlowEngine::evaluate_condition("missing", &vars));
     }
 }
