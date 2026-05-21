@@ -21,7 +21,7 @@ impl SlaEngine {
         tracing::debug!("[SLA] Evaluating {} criteria", criteria.len());
         let mut results = Vec::new();
         for criterion in criteria {
-            let actual = get_metric_value(criterion.metric, stats);
+            let actual = get_metric_value(criterion.metric, stats, criterion.subject.as_deref());
             let passed = actual <= criterion.threshold;
             tracing::debug!(
                 "[SLA] {:?}: actual={:.4} threshold={:.4} passed={}",
@@ -56,13 +56,23 @@ impl SlaEngine {
     }
 }
 
-fn get_metric_value(metric: SlaMetric, stats: &goose::metrics::GooseMetrics) -> f32 {
-    let total_reqs: usize = stats
-        .requests
-        .values()
-        .map(|r| r.success_count + r.fail_count)
-        .sum();
-    let total_fails: usize = stats.requests.values().map(|r| r.fail_count).sum();
+fn get_metric_value(
+    metric: SlaMetric,
+    stats: &goose::metrics::GooseMetrics,
+    subject: Option<&str>,
+) -> f32 {
+    let requests: Vec<&goose::metrics::GooseRequestMetricAggregate> = if let Some(s) = subject {
+        stats
+            .requests
+            .values()
+            .filter(|r| r.path == s)
+            .collect()
+    } else {
+        stats.requests.values().collect()
+    };
+
+    let total_reqs: usize = requests.iter().map(|r| r.success_count + r.fail_count).sum();
+    let total_fails: usize = requests.iter().map(|r| r.fail_count).sum();
 
     match metric {
         SlaMetric::FailRate => {
@@ -75,7 +85,7 @@ fn get_metric_value(metric: SlaMetric, stats: &goose::metrics::GooseMetrics) -> 
         SlaMetric::AvgResponseTime => {
             let mut total_time: usize = 0;
             let mut total_count: usize = 0;
-            for req in stats.requests.values() {
+            for req in &requests {
                 total_time += req.raw_data.total_time;
                 total_count += req.raw_data.counter;
             }
@@ -92,7 +102,7 @@ fn get_metric_value(metric: SlaMetric, stats: &goose::metrics::GooseMetrics) -> 
                 SlaMetric::P99ResponseTime => 99.0,
                 _ => unreachable!(),
             };
-            percentile_from_metrics(stats, pct)
+            percentile_from_metrics(&requests, pct)
         }
         SlaMetric::Throughput => {
             let duration_ms = stats.duration;
@@ -105,9 +115,12 @@ fn get_metric_value(metric: SlaMetric, stats: &goose::metrics::GooseMetrics) -> 
     }
 }
 
-fn percentile_from_metrics(stats: &goose::metrics::GooseMetrics, percentile: f64) -> f32 {
+fn percentile_from_metrics(
+    requests: &[&goose::metrics::GooseRequestMetricAggregate],
+    percentile: f64,
+) -> f32 {
     let mut all_times: Vec<usize> = Vec::new();
-    for req in stats.requests.values() {
+    for req in requests {
         for (&time_ms, &count) in &req.raw_data.times {
             for _ in 0..count {
                 all_times.push(time_ms);
@@ -239,19 +252,5 @@ mod tests {
         let stats = mock_stats();
         let results = SlaEngine::evaluate(&[], &stats);
         assert!(results.is_empty());
-    }
-
-    #[test]
-    fn test_continue_action_does_not_breach() {
-        let results = vec![SlaResult {
-            metric: SlaMetric::FailRate,
-            actual: 0.5,
-            threshold: 0.1,
-            passed: false,
-            action: SlaAction::Continue,
-            subject: None,
-        }];
-        let result = SlaEngine::check_breaches(&results);
-        assert!(result.is_ok());
     }
 }

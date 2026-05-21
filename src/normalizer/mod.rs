@@ -105,24 +105,11 @@ impl SchemaNormalizer {
                             HTTPRequestDefinition::Simple(url) => {
                                 new_requests.push(HTTPRequestDefinition::Detailed(Box::new(
                                     DetailedRequest {
-                                        url,
-                                        method: None,
-                                        headers: None,
-                                        body: None,
-                                        label: None,
-                                        body_file: None,
-                                        timeout: None,
+                                        url: url.to_string(),
                                         on_start: true,
-                                        think_time: None,
-                                        extract_jsonpath: None,
-                                        extract_regexp: None,
-                                        assert: Vec::new(),
-                                        protocol: None,
-                                        message: None,
-                                        method_name: None,
-                                        execute_if: None,
-                                        loop_while: None,
-                                    },
+                                        ..Default::default()
+                                    }
+
                                 )));
                             }
                             HTTPRequestDefinition::Detailed(detailed) => {
