@@ -20,8 +20,20 @@ quick-xml = "0.31"
 serde_json_path = "0.7"
 downcast-rs = "1.2"
 clap = { version = "4.6.0", features = ["derive"] }
-axum = "0.8.1"
+axum = { version = "0.8.1", features = ["ws"] }
 thiserror = "2.0"
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+tonic = { version = "0.12", features = ["tls"] }
+prost = "0.13"
+influxdb = { version = "0.7", features = ["use-serde"] }
+tonic-reflection = "0.12"
+prost-reflect = { version = "0.14", features = ["serde"] }
+prost-types = "0.13"
+tokio-stream = { version = "0.1", features = ["net"] }
+async-stream = "0.3"
+sxd-document = "0.3"
+sxd-xpath = "0.4"
 
 [dev-dependencies]
 cargo-llvm-cov = "0.5"
@@ -29,3 +41,6 @@ ntest = "0.9.5"
 tempfile = "3.8"
 tower = "0.5.3"
 tower-http = "0.6.8"
+
+[build-dependencies]
+tonic-build = "0.12"

@@ -44,6 +44,7 @@ async fn test_state_integration() {
                     method_name: None,
                     execute_if: None,
                     loop_while: None,
+                    ..Default::default()
                 })),
                 HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                     url: format!("http://{}/user/${{testVar}}", addr),
@@ -63,6 +64,7 @@ async fn test_state_integration() {
                     method_name: None,
                     execute_if: None,
                     loop_while: None,
+                    ..Default::default()
                 })),
             ],
             weight: 1,

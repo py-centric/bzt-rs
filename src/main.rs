@@ -72,7 +72,7 @@ async fn main() -> Result<(), BztError> {
     };
 
     if args.dry_run {
-        let summary = engine::validation::validate_config(&config);
+        let summary = engine::validation::validate_config(&config).await;
         summary.report();
         if summary.is_valid() {
             return Ok(());
@@ -90,10 +90,10 @@ async fn main() -> Result<(), BztError> {
 
     if args.mock_run {
         println!("Starting integrated mock run...");
-        let addr = engine::mock::start_mock_server(config.clone()).await?;
-        let host_override = format!("http://{addr}");
+        let addrs = engine::mock::start_mock_server(config.clone()).await?;
+        let host_override = format!("http://{}", addrs.http_addr);
 
-        let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override))?;
+        let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
         let _stats = attack
             .execute()
             .await

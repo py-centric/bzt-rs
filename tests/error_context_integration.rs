@@ -99,8 +99,8 @@ fn test_broken_yaml_syntax_error_includes_context() {
 }
 
 /// Test that translator errors propagate with context.
-#[test]
-fn test_translator_data_source_missing_returns_error() {
+#[tokio::test]
+async fn test_translator_data_source_missing_returns_error() {
     let yaml = r#"
 execution:
   - concurrency: 10
@@ -117,7 +117,7 @@ scenarios:
 "#;
     let config: bzt_rs::models::config::Configuration = serde_yaml::from_str(yaml).unwrap();
 
-    let result = bzt_rs::translator::StateTranslator::translate(&config, None);
+    let result = bzt_rs::translator::StateTranslator::translate(&config, None, None).await;
     let msg = match result {
         Ok(_) => panic!("expected translation to fail for missing data source"),
         Err(e) => e.to_string(),

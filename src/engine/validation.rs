@@ -60,7 +60,7 @@ impl ValidationSummary {
     }
 }
 
-pub fn validate_config(config: &Configuration) -> ValidationSummary {
+pub async fn validate_config(config: &Configuration) -> ValidationSummary {
     let mut summary = ValidationSummary {
         syntax_valid: true, // If we have the config object, it's syntactically valid
         normalization_successful: true,
@@ -85,7 +85,7 @@ pub fn validate_config(config: &Configuration) -> ValidationSummary {
     }
 
     // Try translation
-    match StateTranslator::translate(config, None) {
+    match StateTranslator::translate(config, None, None).await {
         Ok(_) => summary.translation_successful = true,
         Err(e) => {
             summary.translation_successful = false;
@@ -237,7 +237,9 @@ mod tests {
                     method_name: None,
                     execute_if: None,
                     loop_while: None,
+                    ..Default::default()
                 }))],
+
                 weight: 1,
                 think_time: None,
                 data_sources: None,

@@ -40,7 +40,9 @@ async fn test_sla_and_pacing_integration() {
                 method_name: None,
                 execute_if: None,
                 loop_while: None,
-            }))],
+                ..Default::default()
+                }))],
+
             weight: 1,
             think_time: None,
             data_sources: None,
@@ -62,6 +64,11 @@ async fn test_sla_and_pacing_integration() {
         reporting: vec![ReportingDefinition {
             module: "junit-xml".to_string(),
             filename: Some("/tmp/bzt-sla-test-junit.xml".to_string()),
+            url: None,
+            token: None,
+            org: None,
+            bucket: None,
+            interval: None,
             // fail-rate threshold of 5% — mock always returns 200, so this should pass
             failed_threshold: Some(0.05),
             sla: vec![
