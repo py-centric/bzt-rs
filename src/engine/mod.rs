@@ -2,13 +2,16 @@ pub mod control_flow;
 pub mod data_sources;
 pub mod env;
 pub mod extraction;
+pub mod grpc_dynamic;
 pub mod goose;
 pub mod interpolation;
 pub mod macros;
 pub mod mock;
 pub mod pacing;
+pub mod proto;
 pub mod reporting;
 pub mod sla;
+pub mod utils;
 pub mod validation;
 
 #[derive(Debug, thiserror::Error)]

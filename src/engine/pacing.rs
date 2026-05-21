@@ -1,3 +1,4 @@
+use crate::engine::utils::parse_time_to_ms;
 use crate::models::config::PacingConfig;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -5,7 +6,7 @@ pub struct PacingEngine;
 
 impl PacingEngine {
     pub fn calculate_delay(config: &PacingConfig) -> Duration {
-        let period_ms = parse_period(&config.per);
+        let period_ms = parse_time_to_ms(&config.per);
         if config.rate == 0 {
             tracing::debug!("[PACING] Rate=0, returning zero delay");
             return Duration::from_millis(0);
@@ -33,18 +34,6 @@ impl PacingEngine {
             delay
         );
         delay
-    }
-}
-
-fn parse_period(s: &str) -> u64 {
-    if s.ends_with("ms") {
-        s.trim_end_matches("ms").parse().unwrap_or(1000)
-    } else if s.ends_with('s') {
-        s.trim_end_matches('s').parse::<u64>().unwrap_or(1) * 1000
-    } else if s.ends_with('m') {
-        s.trim_end_matches('m').parse::<u64>().unwrap_or(1) * 60_000
-    } else {
-        1000
     }
 }
 
@@ -94,22 +83,5 @@ mod tests {
         };
         let delay = PacingEngine::calculate_delay(&config);
         assert!(delay.as_millis() > 0);
-    }
-
-    #[test]
-    fn test_parse_period_seconds() {
-        assert_eq!(parse_period("1s"), 1000);
-        assert_eq!(parse_period("30s"), 30000);
-    }
-
-    #[test]
-    fn test_parse_period_ms() {
-        assert_eq!(parse_period("500ms"), 500);
-    }
-
-    #[test]
-    fn test_parse_period_minutes() {
-        assert_eq!(parse_period("1m"), 60000);
-        assert_eq!(parse_period("5m"), 300000);
     }
 }
