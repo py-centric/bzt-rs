@@ -1,5 +1,9 @@
 # bzt-rs Architecture
 
+`bzt-rs` is designed as a modular, high-throughput pipeline that transforms high-level performance specifications into highly concurrent asynchronous tasks.
+
+## Orchestration Flow
+
 ```mermaid
 graph TD
     CLI[CLI main.rs] --> Parser[Multi-Format Parser]
@@ -7,40 +11,58 @@ graph TD
     AST --> Normalizer[Schema Normalizer]
     Normalizer --> UnifiedAST[Unified Configuration]
     
-    UnifiedAST --> Validation[Validation Engine]
-    UnifiedAST --> Security[Security Checks]
-    UnifiedAST --> Mock[Mock Server]
-    UnifiedAST --> Translator[State Translator]
+    UnifiedAST --> Validation[Async Validation Engine]
+    UnifiedAST --> Discovery[gRPC Service Discovery]
+    UnifiedAST --> Translator[Async State Translator]
     
-    Security --> Env[Environment Loader]
-    Security --> DataSource[Data Source Validation]
+    Discovery --> Translator
     
-    Translator --> Pacing[Pacing Engine]
     Translator --> Goose[Goose Load Engine]
     
-    Goose --> SLA[SLA Engine]
-    Goose --> Reporter[CLI Reporter]
-    Goose --> JUnit[JUnit Reporter]
+    Goose --> RealTime[Real-Time Reporting Task]
+    RealTime --> Influx[InfluxDB Sink]
     
-    Mock --> Goose
-    Env --> Translator
-    Pacing --> Goose
-    SLA --> Goose
+    Goose --> SLA[SLA Engine]
+    Goose --> PostReport[Post-Run Reporters]
+    
+    PostReport --> JUnit[JUnit XML]
+    PostReport --> HTML[Goose HTML]
+    PostReport --> CLI_Sum[CLI Summary]
 ```
 
-## Components
+## Core Components
 
-1. **CLI (main.rs)**: Parses 4 flags (`<CONFIG>`, `--dry-run`, `--mock`, `--mock-run`). Unimplemented distributed/metrics flags removed.
-2. **Multi-Format Parser**: Deserializes YAML, JSON, and TOML into the unified Configuration model.
-3. **Schema Normalizer**: Bridges "Shorthand" and Taurus schemas, resolves hierarchical scenario names.
-4. **Config Model**: Supports `execution`, `scenarios`, `reporting` with Taurus fields: `label`, `headers`, `timeout`, `body-file`, `DataSourceDefinition` (simple path or structured).
-5. **Validation Engine**: Performs dry-run checks for configuration and file dependencies.
-6. **Security Checks**: Path traversal rejection, file size limits (100MB), sensitive env var masking (`AWS_*`, `SECRET*`, `KEY`, `TOKEN`, `PASSWORD`, `PRIVATE*`, `DATABASE_URL`), `deny_unknown_fields` on config structs, localhost-only mock bind.
-7. **Mock Server**: Assertion-based HTTP mock server binding to `127.0.0.1`.
-8. **Environment Loader** (`env.rs`): `${env.VAR}` resolution with priority chain (CLI > env > .env > defaults), sensitive var blocklist.
-9. **Pacing Engine** (`pacing.rs`): Fixed-rate and randomized throughput enforcement.
-10. **State Translator**: Maps unified config to dynamic Goose scenarios and tasks. Supports all standard HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD).
-11. **Goose Load Engine**: High-performance Rust-based execution backend (Goose 0.18).
-12. **SLA Engine** (`sla.rs`): Evaluates criteria (fail-rate, avg-response-time, p90/p95/p99, throughput) with Stop/Warn/Continue actions.
-13. **CLI Reporter** (`reporting.rs`): Post-test ASCII summary table with per-endpoint metrics (requests, failures, avg/p95/p99 latency).
-14. **JUnit Reporter**: XML report generation for CI/CD integration.
+### 1. Multi-Format Parser & Normalizer
+Supports **YAML**, **JSON**, and **TOML** (including an optimized shorthand). The normalizer resolves dot-notation inheritance (e.g., `auth.search`), ensuring that parent initialization requests are correctly injected as `on_start` steps in child scenarios.
+
+### 2. Async Validation & Security
+Performs a non-destructive dry-run of the configuration.
+*   **Security Layer**: Enforces path traversal checks, file size limits (100MB), and redacts sensitive environment variables (`SECRET*`, `TOKEN`, `KEY`, etc.) from all logs.
+*   **Path Validation**: Ensures all CSV data sources and body files exist and are reachable before the attack starts.
+
+### 3. Dynamic gRPC Engine
+Uses `prost-reflect` and `tonic-reflection` to enable **Generic gRPC** support.
+*   **Reflection Phase**: Queries the target gRPC server for service descriptors during translation.
+*   **Generic Codec**: Dynamically serializes JSON payloads into binary Protobuf and deserializes responses without pre-compiled code.
+*   **Streaming**: Supports unary and server-side streaming modes asynchronously.
+
+### 4. Async State Translator
+The bridge between the static AST and the dynamic Goose engine. It builds `Goose` transactions that manage:
+*   **Session State**: Per-user `UserSession` with variable storage.
+*   **Interpolation**: Real-time `${var}` and `${env.VAR}` substitution.
+*   **Macro Execution**: Dynamic data generation using `fake` and `uuid`.
+*   **Protocol Dispatch**: Routing traffic to HTTP, WebSocket, or gRPC clients.
+
+### 5. Real-Time Observability
+*   **InfluxDB Reporter**: A dedicated background task that consumes metrics from shared state and flushes them to InfluxDB.
+*   **Distributed Sync**: Every worker node is tagged with a unique `worker_id` (UUID), ensuring correct metric aggregation during distributed "Gaggle" runs.
+
+### 6. Logic & Extraction Engines
+*   **Control Flow**: Implements complex branching and looping logic with numeric comparison and boolean operator support.
+*   **Extraction**: Multi-engine variable capture supporting **JSONPath**, **Regex**, and **XPath 2.0** (via `sxd-xpath`).
+
+### 7. Integrated Mock Server
+A multi-protocol test utility (Axum for HTTP/WS, Tonic for gRPC) that allows for isolated, assertion-based scenario verification.
+
+## Performance Profile
+By leveraging Rust's `tokio` runtime and the `goose` engine, `bzt-rs` maintains a near-zero CPU/memory footprint compared to Java or Python-based alternatives, while providing significantly deeper protocol control.
