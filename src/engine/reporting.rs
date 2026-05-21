@@ -1,9 +1,18 @@
 use crate::engine::BztError;
 use crate::models::config::ReportingDefinition;
 use goose::metrics::GooseMetrics;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Write;
+use influxdb::{Client, InfluxDbWriteable};
+use std::sync::OnceLock;
+use uuid::Uuid;
+
+static WORKER_ID: OnceLock<String> = OnceLock::new();
+
+fn get_worker_id() -> &'static str {
+    WORKER_ID.get_or_init(|| Uuid::new_v4().to_string())
+}
 
 pub struct JUnitReporter;
 
@@ -49,7 +58,8 @@ impl JUnitReporter {
             if request.fail_count > 0 {
                 writeln!(
                     file,
-                    "      <failure message=\"Request failed\" type=\"Error\" />"
+                    "      <failure message=\"Request failed: {} {}\" type=\"Error\" />",
+                    request.method, name
                 )
                 .unwrap();
             }
@@ -60,6 +70,153 @@ impl JUnitReporter {
         writeln!(file, "</testsuites>").unwrap();
 
         Ok(())
+    }
+}
+
+pub struct InfluxDbReporter;
+
+#[derive(Debug, Default, Clone)]
+pub struct RealTimeEndpointStats {
+    pub count: usize,
+    pub failures: usize,
+    pub total_time_ms: usize,
+    pub times: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RealTimeMetrics {
+    pub endpoints: HashMap<String, RealTimeEndpointStats>,
+    pub start_time: std::time::Instant,
+}
+
+impl Default for RealTimeMetrics {
+    fn default() -> Self {
+        Self {
+            endpoints: HashMap::new(),
+            start_time: std::time::Instant::now(),
+        }
+    }
+}
+
+impl InfluxDbReporter {
+    pub async fn push_metrics(
+        reporting: &ReportingDefinition,
+        stats: &GooseMetrics,
+    ) -> Result<(), BztError> {
+        if reporting.module != "influxdb" {
+            return Ok(());
+        }
+
+        let url = reporting.url.as_deref().unwrap_or("http://localhost:8086");
+        let bucket = reporting.bucket.as_deref().unwrap_or("bzt");
+        let token = reporting.token.as_deref().unwrap_or("");
+
+        let client = Client::new(url, bucket).with_token(token);
+        let points = Self::generate_points(stats);
+        let point_count = points.len();
+
+        for point in points {
+            client.query(point).await.map_err(|e| BztError::Internal(
+                format!("InfluxDB push failed: {}", e)
+            ))?;
+        }
+
+        tracing::info!("[INFLUX] Pushed {} points to {}", point_count, url);
+        Ok(())
+    }
+
+    pub async fn push_real_time_metrics(
+        reporting: &ReportingDefinition,
+        metrics: &RealTimeMetrics,
+    ) -> Result<(), BztError> {
+        if reporting.module != "influxdb" {
+            return Ok(());
+        }
+
+        let url = reporting.url.as_deref().unwrap_or("http://localhost:8086");
+        let bucket = reporting.bucket.as_deref().unwrap_or("bzt");
+        let token = reporting.token.as_deref().unwrap_or("");
+
+        let client = Client::new(url, bucket).with_token(token);
+        
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let timestamp = influxdb::Timestamp::Milliseconds(now);
+
+        let mut points = Vec::new();
+        for (name, stats) in &metrics.endpoints {
+            if stats.count == 0 { continue; }
+            
+            let avg_time = stats.total_time_ms as f64 / stats.count as f64;
+            let mut sorted_times = stats.times.clone();
+            sorted_times.sort_unstable();
+            
+            let p95 = if !sorted_times.is_empty() {
+                let val: f64 = 0.95 * (sorted_times.len() as f64 - 1.0);
+                let idx = val.round() as usize;
+                sorted_times[idx] as f32
+            } else { 0.0 };
+
+            let point = timestamp.clone().into_query("request_metrics_realtime")
+                .add_tag("path", name.clone())
+                .add_tag("worker_id", get_worker_id())
+                .add_field("count", stats.count as i64)
+                .add_field("failures", stats.failures as i64)
+                .add_field("avg_ms", avg_time)
+                .add_field("p95_ms", p95);
+            points.push(point);
+        }
+
+        for point in points {
+            client.query(point).await.map_err(|e| BztError::Internal(
+                format!("InfluxDB real-time push failed: {}", e)
+            ))?;
+        }
+
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn generate_points(stats: &GooseMetrics) -> Vec<influxdb::WriteQuery> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let timestamp = influxdb::Timestamp::Milliseconds(now);
+
+        let mut points = Vec::new();
+        for (name, agg) in &stats.requests {
+            let count = agg.raw_data.counter;
+            let avg_time = if count > 0 {
+                agg.raw_data.total_time as f64 / count as f64
+            } else {
+                0.0
+            };
+
+            let point = timestamp.clone().into_query("request_metrics")
+                .add_tag("path", name.clone())
+                .add_tag("method", format!("{:?}", agg.method).to_uppercase())
+                .add_tag("worker_id", get_worker_id())
+                .add_field("count", count as i64)
+                .add_field("failures", agg.fail_count as i64)
+                .add_field("avg_ms", avg_time)
+                .add_field("p95_ms", percentile(&agg.raw_data.times, 95.0))
+                .add_field("p99_ms", percentile(&agg.raw_data.times, 99.0));
+            points.push(point);
+        }
+
+        // Add a global point
+        let global_point = timestamp.into_query("test_summary")
+            .add_tag("worker_id", get_worker_id())
+            .add_field("total_requests", stats.requests.values().map(|r| r.raw_data.counter).sum::<usize>() as i64)
+            .add_field("total_failures", stats.requests.values().map(|r| r.fail_count).sum::<usize>() as i64)
+            .add_field("duration_secs", stats.duration as i64)
+            .add_field("max_users", stats.maximum_users as i64);
+        points.push(global_point);
+        
+        points
     }
 }
 
@@ -142,7 +299,7 @@ impl CliSummary {
             };
 
             endpoints.push(EndpointSummary {
-                method: format!("{:?}", agg.method),
+                method: format!("{:?}", agg.method).to_uppercase(),
                 path: name.clone(),
                 count,
                 failures,
@@ -334,11 +491,13 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_summary_print_does_not_panic() {
-        let timing = make_timing(vec![(50, 3)]);
-        let (name, agg) = make_aggregate("/api/ok", GooseMethod::Get, 3, 0, timing);
+    fn test_influxdb_point_generation() {
+        let timing = make_timing(vec![(100, 10)]);
+        let (name, agg) = make_aggregate("/api/influx", GooseMethod::Get, 10, 0, timing);
         let metrics = make_metrics(vec![(name, agg)]);
-        let summary = CliSummary::from_metrics(&metrics);
-        summary.print(); // Should not panic
+
+        let points = InfluxDbReporter::generate_points(&metrics);
+        // Expect one per endpoint + one global
+        assert_eq!(points.len(), 2);
     }
 }

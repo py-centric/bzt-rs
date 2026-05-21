@@ -1,5 +1,8 @@
 use crate::engine::BztError;
-use crate::engine::reporting::{CliSummary, JUnitReporter};
+use crate::engine::reporting::{CliSummary, InfluxDbReporter, JUnitReporter, RealTimeMetrics};
+use crate::engine::utils::parse_time_to_ms;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use crate::engine::sla::SlaEngine;
 use crate::models::config::{Configuration, SlaAction, SlaCriterion, SlaMetric};
 use crate::translator::StateTranslator;
@@ -9,17 +12,34 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
         "Starting load test with {} scenarios",
         config.scenarios.len()
     );
-    let attack = StateTranslator::translate(&config, None)?;
 
-    // FR-004: Enable HTML report generation via Goose environment variable
+    let real_time_metrics = Arc::new(Mutex::new(RealTimeMetrics::default()));
+
+    // FR-010: Enable real-time reporting if interval is set
     for report_def in &config.reporting {
-        if report_def.module == "html" {
-            let filename = report_def.filename.as_deref().unwrap_or("report.html");
-            unsafe {
-                std::env::set_var("GOOSE_REPORT_FILE", filename);
+        if report_def.module == "influxdb" && report_def.interval.is_some() {
+            let interval_ms = parse_time_to_ms(report_def.interval.as_ref().unwrap());
+            if interval_ms > 0 {
+                let rt_metrics = real_time_metrics.clone();
+                let report_def_clone = report_def.clone();
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
+                    loop {
+                        interval.tick().await;
+                        let metrics_snapshot = {
+                            let lock = rt_metrics.lock().unwrap();
+                            lock.clone()
+                        };
+                        if let Err(e) = InfluxDbReporter::push_real_time_metrics(&report_def_clone, &metrics_snapshot).await {
+                            tracing::error!("[INFLUX-RT] Push failed: {}", e);
+                        }
+                    }
+                });
             }
         }
     }
+
+    let attack = StateTranslator::translate(&config, None, Some(real_time_metrics)).await?;
 
     tracing::info!("Executing Goose attack...");
     let stats = attack.execute().await.map_err(|e| {
@@ -37,6 +57,9 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
     for report_def in &config.reporting {
         if report_def.module == "junit-xml" {
             JUnitReporter::generate_report(report_def, &stats)?;
+        }
+        if report_def.module == "influxdb" {
+            InfluxDbReporter::push_metrics(report_def, &stats).await?;
         }
     }
 
