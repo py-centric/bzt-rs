@@ -1,16 +1,23 @@
 use crate::engine::BztError;
 use crate::models::config::{Configuration, DetailedRequest, HTTPRequestDefinition};
+use ax_ws::{Message, WebSocket};
 use axum::{
-    Router,
-    extract::{Path, State},
+    extract::{Path, State, WebSocketUpgrade, ws as ax_ws},
     http::{Method, StatusCode},
     response::IntoResponse,
     routing::any,
+    Router,
 };
+use futures_util::SinkExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tonic::{transport::Server, Request, Response, Status};
+
+use crate::engine::proto::bzt_mock;
+use bzt_mock::mock_service_server::{MockService, MockServiceServer};
+use bzt_mock::{MockRequest, MockResponse as GrpcMockResponse};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MockResponse {
@@ -51,6 +58,124 @@ pub fn generate_mock_response(req: &DetailedRequest) -> MockResponse {
     response
 }
 
+async fn handle_socket(mut socket: WebSocket, response_msg: String) {
+    if let Some(Ok(msg)) = socket.recv().await {
+        if let Message::Text(text) = msg {
+            tracing::info!("[MOCK-WS] Received: {}", text);
+            if let Err(e) = socket.send(Message::Text(response_msg.into())).await {
+                tracing::error!("[MOCK-WS] Send failed: {}", e);
+            }
+        }
+    }
+    let _ = socket.close().await;
+}
+
+use std::pin::Pin;
+use tokio_stream::{Stream, StreamExt};
+
+#[derive(Default)]
+pub struct MyMockService;
+
+#[tonic::async_trait]
+impl MockService for MyMockService {
+    async fn call(
+        &self,
+        request: Request<MockRequest>,
+    ) -> Result<Response<GrpcMockResponse>, Status> {
+        let req = request.into_inner();
+        tracing::info!("[MOCK-GRPC] Received unary call for: {}", req.method);
+
+        Ok(Response::new(GrpcMockResponse {
+            message: format!("Mock response for {}", req.method),
+            status: 0,
+        }))
+    }
+
+    type ServerStreamStream = Pin<Box<dyn Stream<Item = Result<GrpcMockResponse, Status>> + Send>>;
+
+    async fn server_stream(
+        &self,
+        request: Request<MockRequest>,
+    ) -> Result<Response<Self::ServerStreamStream>, Status> {
+        let req = request.into_inner();
+        tracing::info!("[MOCK-GRPC] Received server stream for: {}", req.method);
+        
+        let s = tokio_stream::iter(vec![
+            Ok(GrpcMockResponse { message: format!("Part 1 for {}", req.method), status: 0 }),
+            Ok(GrpcMockResponse { message: format!("Part 2 for {}", req.method), status: 0 }),
+        ]);
+        
+        Ok(Response::new(Box::pin(s)))
+    }
+
+    async fn client_stream(
+        &self,
+        request: Request<tonic::Streaming<MockRequest>>,
+    ) -> Result<Response<GrpcMockResponse>, Status> {
+        let mut stream = request.into_inner();
+        let mut count = 0;
+        while let Some(req) = stream.next().await {
+            let _ = req?;
+            count += 1;
+        }
+        tracing::info!("[MOCK-GRPC] Received client stream with {} messages", count);
+        
+        Ok(Response::new(GrpcMockResponse {
+            message: format!("Received {} messages", count),
+            status: 0,
+        }))
+    }
+
+    type BidiStreamStream = Pin<Box<dyn Stream<Item = Result<GrpcMockResponse, Status>> + Send>>;
+
+    async fn bidi_stream(
+        &self,
+        request: Request<tonic::Streaming<MockRequest>>,
+    ) -> Result<Response<Self::BidiStreamStream>, Status> {
+        let mut stream = request.into_inner();
+        let output = async_stream::try_stream! {
+            while let Some(req) = stream.next().await {
+                let r = req?;
+                tracing::info!("[MOCK-GRPC] Bidi echo: {}", r.method);
+                yield GrpcMockResponse {
+                    message: format!("Echo: {}", r.method),
+                    status: 0,
+                };
+            }
+        };
+        Ok(Response::new(Box::pin(output)))
+    }
+}
+
+async fn handle_ws_upgrade(
+    ws: WebSocketUpgrade,
+    Path(path): Path<String>,
+    State(config): State<Arc<Configuration>>,
+) -> impl IntoResponse {
+    let path = if path.starts_with('/') {
+        path
+    } else {
+        format!("/{path}")
+    };
+    let ws_path = format!("/ws{}", path);
+
+    for scenario in config.scenarios.values() {
+        for req_def in &scenario.requests {
+            if let HTTPRequestDefinition::Detailed(d) = req_def {
+                if (d.url == path || d.url == ws_path)
+                    && d.protocol.as_deref().is_some_and(|p| p == "websocket" || p == "ws")
+                {
+                    let mock_res = generate_mock_response(d);
+                    tracing::info!("[MOCK-WS] Upgrading: {}", d.url);
+                    return ws.on_upgrade(move |socket| handle_socket(socket, mock_res.body));
+                }
+            }
+        }
+    }
+
+    StatusCode::NOT_FOUND.into_response()
+}
+
 async fn handle_mock_request(
     method: Method,
     Path(path): Path<String>,
@@ -62,14 +187,13 @@ async fn handle_mock_request(
         format!("/{path}")
     };
 
-    tracing::info!("[MOCK] Request: {} {}", method, path);
+    tracing::info!("[MOCK] HTTP Request: {} {}", method, path);
 
     for scenario in config.scenarios.values() {
         for req_def in &scenario.requests {
             match req_def {
                 HTTPRequestDefinition::Simple(url) => {
                     if url == &path && method == Method::GET {
-                        tracing::info!("[MOCK] Response: {} {} -> 200 OK", method, path);
                         return (StatusCode::OK, "OK").into_response();
                     }
                 }
@@ -82,21 +206,8 @@ async fn handle_mock_request(
                         .unwrap_or(Method::GET);
                     if d.url == path && method == req_method {
                         let mock_res = generate_mock_response(d);
-                        let status = mock_res.status;
-                        let body_preview = if mock_res.body.len() > 200 {
-                            format!("{}... ({} bytes)", &mock_res.body[..200], mock_res.body.len())
-                        } else {
-                            mock_res.body.clone()
-                        };
-                        tracing::info!(
-                            "[MOCK] Response: {} {} -> {} body={:?}",
-                            method,
-                            path,
-                            status,
-                            body_preview
-                        );
                         return (
-                            StatusCode::from_u16(status).unwrap_or(StatusCode::OK),
+                            StatusCode::from_u16(mock_res.status).unwrap_or(StatusCode::OK),
                             mock_res.body,
                         )
                             .into_response();
@@ -106,13 +217,19 @@ async fn handle_mock_request(
         }
     }
 
-    tracing::info!("[MOCK] Response: {} {} -> 404 Not Found", method, path);
+    tracing::info!("[MOCK] Not Found: {} {}", method, path);
     StatusCode::NOT_FOUND.into_response()
 }
 
-pub async fn start_mock_server(config: Configuration) -> Result<SocketAddr, BztError> {
+pub struct MockServerAddresses {
+    pub http_addr: SocketAddr,
+    pub grpc_addr: SocketAddr,
+}
+
+pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddresses, BztError> {
     let shared_config = Arc::new(config);
     let app = Router::new()
+        .route("/ws/{*path}", axum::routing::get(handle_ws_upgrade))
         .route("/{*path}", any(handle_mock_request))
         .with_state(shared_config);
 
@@ -126,7 +243,31 @@ pub async fn start_mock_server(config: Configuration) -> Result<SocketAddr, BztE
         axum::serve(listener, app).await.unwrap();
     });
 
-    Ok(local_addr)
+    // Start gRPC server on a separate port
+    let grpc_addr = SocketAddr::from(([127, 0, 0, 1], 0));
+    let grpc_listener = tokio::net::TcpListener::bind(grpc_addr).await?;
+    let local_grpc_addr = grpc_listener.local_addr()?;
+
+    println!("gRPC Mock server started at {}", local_grpc_addr);
+
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(bzt_mock::FILE_DESCRIPTOR_SET)
+        .build_v1()
+        .unwrap();
+
+    tokio::spawn(async move {
+        Server::builder()
+            .add_service(MockServiceServer::new(MyMockService::default()))
+            .add_service(reflection_service)
+            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(grpc_listener))
+            .await
+            .unwrap();
+    });
+
+    Ok(MockServerAddresses {
+        http_addr: local_addr,
+        grpc_addr: local_grpc_addr,
+    })
 }
 
 #[cfg(test)]

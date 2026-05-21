@@ -1,0 +1,19 @@
+syntax = "proto3";
+package bzt_mock;
+
+service MockService {
+  rpc Call(MockRequest) returns (MockResponse);
+  rpc ServerStream(MockRequest) returns (stream MockResponse);
+  rpc ClientStream(stream MockRequest) returns (MockResponse);
+  rpc BidiStream(stream MockRequest) returns (stream MockResponse);
+}
+
+message MockRequest {
+  string method = 1;
+  string payload = 2;
+}
+
+message MockResponse {
+  string message = 1;
+  int32 status = 2;
+}
