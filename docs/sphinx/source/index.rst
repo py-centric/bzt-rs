@@ -22,6 +22,12 @@ high-performance, Rust-based Goose framework.
 Key Features
 ------------
 
+* **Multi-Protocol Support**: Native support for HTTP/S, WebSockets, and dynamic gRPC.
+
+* **Dynamic gRPC Reflection**: Service discovery at runtime without pre-compiled protos.
+
+* **Real-time Observability**: Metrics shipping to InfluxDB with worker-level synchronization.
+
 * **Multi-Format Parsing**: Deserializes configuration files (.yaml, .json, .toml).
 
 * **Schema Normalizer**: Unifies Shorthand and Taurus schemas.
@@ -29,6 +35,8 @@ Key Features
 * **State Translator**: Maps execution bounds to Goose configurations.
 
 * **Dynamic Task Engine**: Evaluates dynamic data, macros, and control flow.
+
+* **Advanced Extraction**: Captured variables using JSONPath, Regex, and full XPath 2.0.
 
 * **Structured Error Handling**: Typed ``BztError`` with context, file paths,
   and source chaining for actionable diagnostics.
@@ -44,7 +52,7 @@ Key Features
 
 * **CLI Reporter**: Post-test ASCII summary table with per-endpoint metrics.
 
-* **Reporting**: JUnit XML output for CI/CD integration.
+* **Reporting**: JUnit XML, HTML, and Real-time InfluxDB output.
 
 Indices and tables
 ==================

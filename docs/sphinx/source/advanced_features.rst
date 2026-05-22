@@ -70,6 +70,13 @@ Build stateful user journeys by extracting data from responses:
      extract-regexp:
        id: "id=([0-9]+)"
 
+* **XPath 2.0 Extraction**:
+
+  .. code-block:: yaml
+
+     extract-xpath:
+       item_count: "//inventory/item/@count"
+
 Use extracted variables in any subsequent request field:
 
 .. code-block:: yaml
@@ -79,27 +86,72 @@ Use extracted variables in any subsequent request field:
      headers:
        X-User-ID: ${id}
 
+Dynamic gRPC (Reflection & Streaming)
+-------------------------------------
+bzt-rs provides advanced, dynamic support for gRPC without requiring pre-compiled
+proto files. By leveraging gRPC Reflection, the engine discovers service schemas
+at runtime.
+
+* **Unary gRPC**: Standard request/response calls.
+* **Server-side Streaming**: Processes a stream of response messages, executing
+  assertions and extraction rules against *every* frame.
+
+.. code-block:: yaml
+
+   scenarios:
+     grpc-test:
+       requests:
+       - url: grpc://localhost:50051
+         protocol: grpc
+         method-name: my.pkg.Service/GetStream
+         grpc-mode: server-streaming
+         body: '{"id": "123"}'
+         assert:
+         - contains: ["STATUS_OK"]
+
+WebSocket Testing
+-----------------
+Full support for bidirectional text-based WebSockets. You can initiate connections,
+send messages, and verify asynchronous responses.
+
+.. code-block:: yaml
+
+   scenarios:
+     ws-test:
+       requests:
+       - url: ws://localhost:8080/chat
+         protocol: websocket
+         message: "Hello from bzt-rs"
+         assert:
+         - contains: ["Welcome"]
+
+Real-time InfluxDB Observability
+--------------------------------
+Ship metrics to InfluxDB in real-time during the test run. Each worker node in
+a distributed test is uniquely identified via a ``worker_id`` tag, ensuring
+accurate data aggregation in Grafana dashboards.
+
+.. code-block:: yaml
+
+   reporting:
+   - module: influxdb
+     url: http://influxdb:8086
+     bucket: test_metrics
+     token: ${env.INFLUX_TOKEN}
+     interval: 10s  # Push metrics every 10 seconds
+
 Control Flow: Conditions & Loops
 ---------------------------------
-
-* **Conditional Execution (``if``)**:
-  Execute a request only if a condition is met.
-
-  .. code-block:: yaml
-
-     requests:
-     - url: /api/special
-       if: "${id}" != ""
-
-
+...
 * **Polling Loops (``loop``)**:
-  Repeatedly execute a request until a condition is satisfied.
+  Repeatedly execute a request until a condition is satisfied. Supports numeric
+  comparisons and boolean logic.
 
   .. code-block:: yaml
 
      requests:
      - url: /api/status
-       loop: "${status}" == "processing"
+       loop: "${status}" == "processing" || "${count}" < 5
 
 SLA & Pass/Fail Criteria
 -------------------------
