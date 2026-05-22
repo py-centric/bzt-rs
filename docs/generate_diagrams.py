@@ -3,7 +3,7 @@ from diagrams import Cluster, Diagram, Edge
 from diagrams.programming.language import Rust
 from diagrams.onprem.client import User
 from diagrams.onprem.network import Nginx
-from diagrams.onprem.database import PostgreSQL
+from diagrams.onprem.database import PostgreSQL, InfluxDB
 from diagrams.onprem.inmemory import Redis
 from diagrams.onprem.queue import Kafka
 from diagrams.onprem.compute import Server
@@ -57,20 +57,34 @@ def generate_master_interaction_map(output_path):
             cli = Rust("CLI (main.rs)")
             parser = Server("Multi-Format Parser")
             normalizer = Server("Schema Normalizer")
-            validation = Server("Validation Engine")
-        with Cluster("bzt-rs Execution Core"):
-            translator = Server("State Translator")
-            mock = Server("Mock Server")
+            validation = Server("Async Validation")
+        with Cluster("Execution Core"):
+            discovery = Server("gRPC Service Discovery")
+            translator = Server("Async State Translator")
+            mock = Server("Multi-Protocol Mock")
             goose = Rust("Goose Load Engine")
         with Cluster("Observability"):
-            metrics = Prometheus("Metrics")
+            influx = InfluxDB("Real-time InfluxDB")
+            metrics = Prometheus("Aggregated Metrics")
+            junit = Server("JUnit XML")
             html_report = Server("HTML Report")
-        target = Server("Target API System")
+        
+        with Cluster("Targets"):
+            rest = Server("REST / HTTP")
+            ws = Server("WebSockets")
+            grpc = Server("Dynamic gRPC")
 
         user >> cli >> parser >> normalizer >> validation
-        validation >> translator >> goose >> Edge(color="red") >> target
+        validation >> discovery >> translator >> goose
+        goose >> Edge(color="red") >> rest
+        goose >> Edge(color="blue") >> ws
+        goose >> Edge(color="green") >> grpc
+        
         validation >> Edge(color="orange", style="dashed") >> mock
+        
+        goose >> influx
         goose >> metrics
+        goose >> junit
         goose >> html_report
 
 # ==========================================
@@ -145,6 +159,47 @@ def generate_sc_session_state(output_path):
         user_session >> Edge(label="Inject: Token") >> req2 >> ext2
         ext2 >> Edge(label="Store: EntityID") >> user_session
         user_session >> Edge(label="Inject: EntityID") >> req3
+
+def generate_sc_grpc_discovery(output_path):
+    """Scenario: Dynamic gRPC Reflection & Discovery."""
+    graph_attr = {"nodesep": "0.8", "ranksep": "0.8"}
+    with Diagram("Scenario: Dynamic gRPC Discovery", 
+                 filename=os.path.join(output_path, "02_Use_Cases/sc_grpc_discovery"),
+                 show=False, direction="LR", graph_attr=graph_attr):
+        
+        translator = Server("Async Translator")
+        
+        with Cluster("Reflection Phase"):
+            client = Server("Reflection Client")
+            target = Server("gRPC Server\n(Reflection Enabled)")
+            pool = Server("Descriptor Pool")
+            
+        with Cluster("Execution Phase"):
+            dynamic_msg = Server("Dynamic Message\n(JSON <-> Proto)")
+            call = Server("Generic gRPC Call")
+
+        translator >> client >> Edge(label="ListServices") >> target
+        target >> Edge(label="FileDescriptors") >> client >> pool
+        pool >> dynamic_msg >> call >> target
+
+def generate_sc_realtime_observability(output_path):
+    """Scenario: Real-time InfluxDB reporting lifecycle."""
+    with Diagram("Scenario: Real-time Observability", 
+                 filename=os.path.join(output_path, "02_Use_Cases/sc_realtime_obs"),
+                 show=False, direction="TB"):
+        
+        with Cluster("Worker Node (UUID: worker-123)"):
+            goose = Rust("Goose Engine")
+            shared_state = Server("Shared RealTimeMetrics\n(Arc<Mutex>)")
+            bg_task = Server("Background Reporting Task")
+            
+        influx = InfluxDB("InfluxDB")
+        grafana = Server("Grafana Dashboard")
+
+        goose >> Edge(label="Update Delta") >> shared_state
+        bg_task >> Edge(label="Poll every 10s") >> shared_state
+        bg_task >> Edge(label="Push with worker_id") >> influx
+        influx >> grafana
 
 # ==========================================
 # 05/06. CLOUD DEPLOYMENTS & STRATEGIES
@@ -257,6 +312,8 @@ if __name__ == "__main__":
         generate_sc_dry_run_logic(output_dir)
         generate_sc_branching_logic(output_dir)
         generate_sc_session_state(output_dir)
+        generate_sc_grpc_discovery(output_dir)
+        generate_sc_realtime_observability(output_dir)
         generate_multi_cloud_topologies(output_dir)
         generate_deployment_aws_strategies(output_dir)
         generate_deployment_gcp_strategies(output_dir)
