@@ -45,12 +45,13 @@ impl StateTranslator {
         for scenario in config.scenarios.values() {
             for req in &scenario.requests {
                 if let HTTPRequestDefinition::Detailed(d) = req {
-                    if d.protocol.as_deref() == Some("grpc") {
+                    let is_grpc = d.protocol.as_deref() == Some("grpc");
+                    if is_grpc {
                         let host = host_override.clone().unwrap_or_else(|| d.url.clone());
-                        if !grpc_clients.contains_key(&host) {
+                        if let std::collections::hash_map::Entry::Vacant(e) = grpc_clients.entry(host.clone()) {
                             tracing::info!("[DISCOVERY] Performing gRPC reflection for {}", host);
                             if let Ok(client) = DynamicGrpcClient::discover(&host).await {
-                                grpc_clients.insert(host, Arc::new(client));
+                                e.insert(Arc::new(client));
                             } else {
                                 tracing::warn!("[DISCOVERY] gRPC reflection failed for {}. Fallback to static or mock client.", host);
                             }
@@ -699,7 +700,8 @@ impl StateTranslator {
 
                             // Unified variable synchronization for loop condition
                                 if d.loop_while.is_some() {
-                                    if let Some(session) = user.get_session_data::<UserSession>() {
+                                    let session_opt = user.get_session_data::<UserSession>();
+                                    if let Some(session) = session_opt {
                                         variables = session.variables.clone();
                                         tracing::trace!("[SESSION] {} variables updated for loop", variables.len());
                                     }
