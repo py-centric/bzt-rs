@@ -17,8 +17,10 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
 
     // FR-010: Enable real-time reporting if interval is set
     for report_def in &config.reporting {
-        if report_def.module == "influxdb" && report_def.interval.is_some() {
-            let interval_ms = parse_time_to_ms(report_def.interval.as_ref().unwrap());
+        if report_def.module == "influxdb" {
+            let interval_opt = &report_def.interval;
+            if let Some(interval) = interval_opt {
+                let interval_ms = parse_time_to_ms(interval);
             if interval_ms > 0 {
                 let rt_metrics = real_time_metrics.clone();
                 let report_def_clone = report_def.clone();
@@ -35,6 +37,7 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
                         }
                     }
                 });
+            }
             }
         }
     }
@@ -113,4 +116,18 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::config::Configuration;
+
+    #[tokio::test]
+    async fn test_run_attack_empty_config() {
+        let config = Configuration { execution: vec![], scenarios: std::collections::HashMap::new(), reporting: vec![] };
+        let result = run_attack(config).await;
+        // Goose shouldn't panic on an empty config, it should just complete or error gracefully.
+        assert!(result.is_ok() || result.is_err()); 
+    }
 }

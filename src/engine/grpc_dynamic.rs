@@ -43,7 +43,8 @@ impl DynamicGrpcClient {
 
         let mut services = Vec::new();
         if let Some(Ok(response)) = stream.next().await {
-            if let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::ListServicesResponse(list)) = response.message_response {
+            let response_msg = response.message_response;
+            if let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::ListServicesResponse(list)) = response_msg {
                 for svc in list.service {
                     services.push(svc.name);
                 }
@@ -62,11 +63,13 @@ impl DynamicGrpcClient {
                 .into_inner();
 
             if let Some(Ok(resp)) = s.next().await {
-                if let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::FileDescriptorResponse(fd_resp)) = resp.message_response {
+                let resp_msg = resp.message_response;
+                if let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::FileDescriptorResponse(fd_resp)) = resp_msg {
                     for raw_fd in fd_resp.file_descriptor_proto {
                         if discovered_files.insert(raw_fd.clone()) {
                             let _ = pool.add_file_descriptor_proto(
-                                prost_types::FileDescriptorProto::decode(&raw_fd[..]).unwrap()
+                                prost_types::FileDescriptorProto::decode(&raw_fd[..])
+                                    .map_err(|e| BztError::Internal(format!("Failed to decode FileDescriptorProto: {}", e)))?
                             );
                         }
                     }
@@ -97,11 +100,16 @@ impl DynamicGrpcClient {
     ) -> Result<String, BztError> {
         let input_msg = self.json_to_dynamic(method.input(), payload_json)?;
         let mut grpc = Grpc::new(channel);
+        grpc.ready().await.map_err(|e| BztError::Network {
+            host: "gRPC ready check".to_string(),
+            operation: "ready".to_string(),
+            details: e.to_string(),
+        })?;
         let path = format!("/{}/{}", method.parent_service().full_name(), method.name());
         
         let client = grpc.unary(
             tonic::Request::new(input_msg), 
-            path.parse().unwrap(), 
+            path.parse().map_err(|e| BztError::Internal(format!("Invalid path {}: {}", path, e)))?, 
             DynamicCodec::new(method.output())
         );
         
@@ -122,11 +130,16 @@ impl DynamicGrpcClient {
     ) -> Result<Box<dyn tokio_stream::Stream<Item = Result<String, BztError>> + Unpin + Send>, BztError> {
         let input_msg = self.json_to_dynamic(method.input(), payload_json)?;
         let mut grpc = Grpc::new(channel);
+        grpc.ready().await.map_err(|e| BztError::Network {
+            host: "gRPC ready check".to_string(),
+            operation: "ready".to_string(),
+            details: e.to_string(),
+        })?;
         let path = format!("/{}/{}", method.parent_service().full_name(), method.name());
         
         let stream = grpc.server_streaming(
             tonic::Request::new(input_msg),
-            path.parse().unwrap(),
+            path.parse().map_err(|e| BztError::Internal(format!("Invalid path {}: {}", path, e)))?,
             DynamicCodec::new(method.output())
         ).await.map_err(|e| BztError::Network {
             host: "gRPC Call".to_string(),
@@ -155,6 +168,11 @@ impl DynamicGrpcClient {
         payloads: Vec<String>,
     ) -> Result<String, BztError> {
         let mut grpc = Grpc::new(channel);
+        grpc.ready().await.map_err(|e| BztError::Network {
+            host: "gRPC ready check".to_string(),
+            operation: "ready".to_string(),
+            details: e.to_string(),
+        })?;
         let path = format!("/{}/{}", method.parent_service().full_name(), method.name());
         
         let mut dynamic_payloads = Vec::new();
@@ -165,7 +183,7 @@ impl DynamicGrpcClient {
 
         let response = grpc.client_streaming(
             tonic::Request::new(stream),
-            path.parse().unwrap(),
+            path.parse().map_err(|e| BztError::Internal(format!("Invalid path {}: {}", path, e)))?,
             DynamicCodec::new(method.output())
         ).await.map_err(|e| BztError::Network {
             host: "gRPC Call".to_string(),
@@ -193,7 +211,7 @@ impl DynamicGrpcClient {
 
         let response_stream = grpc.streaming(
             tonic::Request::new(stream),
-            path.parse().unwrap(),
+            path.parse().map_err(|e| BztError::Internal(format!("Invalid path {}: {}", path, e)))?,
             DynamicCodec::new(method.output())
         ).await.map_err(|e| BztError::Network {
             host: "gRPC Call".to_string(),
@@ -282,3 +300,29 @@ impl tonic::codec::Decoder for DynamicDecoder {
 
 use tonic::Status;
 use prost::Message;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::mock::start_mock_server;
+    use crate::models::config::Configuration;
+
+    #[tokio::test]
+    async fn test_grpc_dynamic_discovery_and_unary() {
+        let addrs = start_mock_server(Configuration { execution: vec![], scenarios: std::collections::HashMap::new(), reporting: vec![] }).await.expect("Failed to start mock server");
+        let grpc_host = format!("http://127.0.0.1:{}", addrs.grpc_addr.port());
+        
+        let client_res = DynamicGrpcClient::discover(&grpc_host).await;
+        assert!(client_res.is_ok());
+        let client = client_res.unwrap();
+
+        let method = client.find_method("bzt_mock.MockService.Call");
+        assert!(method.is_ok());
+        
+        let channel = Channel::from_shared(grpc_host).unwrap().connect().await.unwrap();
+        let payload = r#"{"method": "test"}"#;
+        
+        let result = client.call_unary(channel, method.unwrap(), payload).await;
+        assert!(result.is_ok());
+    }
+}
