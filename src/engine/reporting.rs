@@ -34,13 +34,13 @@ impl JUnitReporter {
             failures += request.fail_count;
         }
 
-        writeln!(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").unwrap();
-        writeln!(file, "<testsuites>").unwrap();
+        writeln!(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").map_err(|e| BztError::Internal(e.to_string()))?;
+        writeln!(file, "<testsuites>").map_err(|e| BztError::Internal(e.to_string()))?;
         writeln!(
             file,
             "  <testsuite name=\"bzt-rs\" tests=\"{total_requests}\" failures=\"{failures}\">"
         )
-        .unwrap();
+        .map_err(|e| BztError::Internal(e.to_string()))?;
 
         for (name, request) in &stats.requests {
             let avg_time = if request.raw_data.counter > 0 {
@@ -54,20 +54,20 @@ impl JUnitReporter {
                 name,
                 avg_time / 1000.0
             )
-            .unwrap();
+            .map_err(|e| BztError::Internal(e.to_string()))?;
             if request.fail_count > 0 {
                 writeln!(
                     file,
                     "      <failure message=\"Request failed: {} {}\" type=\"Error\" />",
                     request.method, name
                 )
-                .unwrap();
+                .map_err(|e| BztError::Internal(e.to_string()))?;
             }
-            writeln!(file, "    </testcase>").unwrap();
+            writeln!(file, "    </testcase>").map_err(|e| BztError::Internal(e.to_string()))?;
         }
 
-        writeln!(file, "  </testsuite>").unwrap();
-        writeln!(file, "</testsuites>").unwrap();
+        writeln!(file, "  </testsuite>").map_err(|e| BztError::Internal(e.to_string()))?;
+        writeln!(file, "</testsuites>").map_err(|e| BztError::Internal(e.to_string()))?;
 
         Ok(())
     }
@@ -141,7 +141,7 @@ impl InfluxDbReporter {
         
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis();
         let timestamp = influxdb::Timestamp::Milliseconds(now);
 
@@ -159,7 +159,7 @@ impl InfluxDbReporter {
                 sorted_times[idx] as f32
             } else { 0.0 };
 
-            let point = timestamp.clone().into_query("request_metrics_realtime")
+            let point = timestamp.into_query("request_metrics_realtime")
                 .add_tag("path", name.clone())
                 .add_tag("worker_id", get_worker_id())
                 .add_field("count", stats.count as i64)
@@ -182,7 +182,7 @@ impl InfluxDbReporter {
     pub fn generate_points(stats: &GooseMetrics) -> Vec<influxdb::WriteQuery> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis();
         let timestamp = influxdb::Timestamp::Milliseconds(now);
 
@@ -195,7 +195,7 @@ impl InfluxDbReporter {
                 0.0
             };
 
-            let point = timestamp.clone().into_query("request_metrics")
+            let point = timestamp.into_query("request_metrics")
                 .add_tag("path", name.clone())
                 .add_tag("method", format!("{:?}", agg.method).to_uppercase())
                 .add_tag("worker_id", get_worker_id())

@@ -59,12 +59,10 @@ pub fn generate_mock_response(req: &DetailedRequest) -> MockResponse {
 }
 
 async fn handle_socket(mut socket: WebSocket, response_msg: String) {
-    if let Some(Ok(msg)) = socket.recv().await {
-        if let Message::Text(text) = msg {
-            tracing::info!("[MOCK-WS] Received: {}", text);
-            if let Err(e) = socket.send(Message::Text(response_msg.into())).await {
-                tracing::error!("[MOCK-WS] Send failed: {}", e);
-            }
+    if let Some(Ok(Message::Text(text))) = socket.recv().await {
+        tracing::info!("[MOCK-WS] Received: {}", text);
+        if let Err(e) = socket.send(Message::Text(response_msg.into())).await {
+            tracing::error!("[MOCK-WS] Send failed: {}", e);
         }
     }
     let _ = socket.close().await;
@@ -162,8 +160,9 @@ async fn handle_ws_upgrade(
     for scenario in config.scenarios.values() {
         for req_def in &scenario.requests {
             if let HTTPRequestDefinition::Detailed(d) = req_def {
-                if (d.url == path || d.url == ws_path)
-                    && d.protocol.as_deref().is_some_and(|p| p == "websocket" || p == "ws")
+                let is_ws = (d.url == path || d.url == ws_path)
+                    && d.protocol.as_deref().is_some_and(|p| p == "websocket" || p == "ws");
+                if is_ws
                 {
                     let mock_res = generate_mock_response(d);
                     tracing::info!("[MOCK-WS] Upgrading: {}", d.url);
@@ -240,7 +239,9 @@ pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddres
     println!("Mock server started at http://{local_addr}");
 
     tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+        if let Err(e) = axum::serve(listener, app).await {
+            tracing::error!("Mock HTTP server error: {}", e);
+        }
     });
 
     // Start gRPC server on a separate port
@@ -253,15 +254,17 @@ pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddres
     let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(bzt_mock::FILE_DESCRIPTOR_SET)
         .build_v1()
-        .unwrap();
+        .map_err(|e| crate::engine::BztError::Internal(e.to_string()))?;
 
     tokio::spawn(async move {
-        Server::builder()
-            .add_service(MockServiceServer::new(MyMockService::default()))
+        if let Err(e) = Server::builder()
+            .add_service(MockServiceServer::new(MyMockService))
             .add_service(reflection_service)
             .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(grpc_listener))
             .await
-            .unwrap();
+        {
+            tracing::error!("Mock gRPC server error: {}", e);
+        }
     });
 
     Ok(MockServerAddresses {
