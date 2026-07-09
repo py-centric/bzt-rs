@@ -42,7 +42,7 @@ async fn test_websocket_integration() -> Result<(), BztError> {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![],
+        reporting: vec![], services: vec![], api: None,
     };
 
     // Start mock server

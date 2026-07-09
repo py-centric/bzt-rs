@@ -88,6 +88,8 @@ async fn test_sla_and_pacing_integration() {
                 },
             ],
         }],
+        services: vec![],
+        api: None,
     };
 
     let result = goose::run_attack(config).await;

@@ -38,7 +38,7 @@ async fn test_csv_parameterization_integration() {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![],
+        reporting: vec![], services: vec![], api: None,
     };
 
     let result = goose::run_attack(config).await;

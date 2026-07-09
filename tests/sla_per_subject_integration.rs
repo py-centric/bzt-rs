@@ -60,6 +60,8 @@ async fn test_sla_per_subject_integration() -> Result<(), BztError> {
                 },
             ],
         }],
+        services: vec![],
+        api: None,
     };
 
     // Start mock server

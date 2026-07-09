@@ -44,7 +44,7 @@ async fn test_grpc_server_streaming_integration() -> Result<(), BztError> {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![],
+        reporting: vec![], services: vec![], api: None,
     };
 
     // Start mock server
@@ -103,7 +103,7 @@ async fn test_grpc_bidi_streaming_integration() -> Result<(), BztError> {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![],
+        reporting: vec![], services: vec![], api: None,
     };
 
     // Start mock server
