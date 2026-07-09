@@ -9,6 +9,7 @@ bzt-rs: High-Performance Taurus Runner in Rust
    installation
    configuration
    advanced_features
+   chaos_engineering
    distributed_mode
    example
    api_reference
@@ -49,6 +50,15 @@ Key Features
 
 * **SLA Evaluation**: Pass/fail criteria with Stop/Warn/Continue actions
   (fail-rate, average response time, p90/p95/p99, throughput).
+
+* **Chaos Engineering Support**: Native lifecycle hooks (``services`` block)
+  for chaos injection/cleanup with guaranteed shutdown execution.
+
+* **Real-Time SLA Actions**: Background SLA evaluation every 1s with custom
+  ``exec:`` shell commands on breach for automated rollback.
+
+* **Dynamic Control API**: Optional HTTP API (Axum) exposing live metrics
+  via ``GET /metrics`` and graceful abort via ``POST /control/stop``.
 
 * **CLI Reporter**: Post-test ASCII summary table with per-endpoint metrics.
 

@@ -63,6 +63,9 @@ def generate_master_interaction_map(output_path):
             translator = Server("Async State Translator")
             mock = Server("Multi-Protocol Mock")
             goose = Rust("Goose Load Engine")
+            services = Server("Shell Hook Executor\n(Chaos Setup/Cleanup)")
+            api = Server("Dynamic Control API\n(Metrics & Stop)")
+            sla_rt = Server("Real-Time SLA Checker")
         with Cluster("Observability"):
             influx = InfluxDB("Real-time InfluxDB")
             metrics = Prometheus("Aggregated Metrics")
@@ -81,6 +84,11 @@ def generate_master_interaction_map(output_path):
         goose >> Edge(color="green") >> grpc
         
         validation >> Edge(color="orange", style="dashed") >> mock
+        
+        # Chaos & Control flows
+        cli >> services >> goose
+        goose >> Edge(color="purple", style="dashed") >> sla_rt >> Edge(color="red", style="dashed", label="Breach Exec") >> services
+        api >> Edge(color="darkgreen", label="Query / Stop") >> goose
         
         goose >> influx
         goose >> metrics
@@ -201,6 +209,34 @@ def generate_sc_realtime_observability(output_path):
         bg_task >> Edge(label="Push with worker_id") >> influx
         influx >> grafana
 
+def generate_sc_chaos_engineering(output_path):
+    """Scenario: Chaos Engineering Lifecycle with hooks, SLA breach actions, and control API."""
+    graph_attr = {"nodesep": "0.8", "ranksep": "0.8"}
+    with Diagram("Scenario: Chaos Engineering Lifecycle",
+                 filename=os.path.join(output_path, "02_Use_Cases/sc_chaos_engineering"),
+                 show=False, direction="TB", graph_attr=graph_attr):
+
+        user = User("Performance Engineer")
+
+        with Cluster("Chaos Lifecycle"):
+            prepare = Server("Shell Hooks\n(prepare)")
+            startup = Server("Shell Hooks\n(startup)")
+            shutdown = Server("Shell Hooks\n(shutdown)")
+
+        with Cluster("Execution Core"):
+            goose = Rust("Goose Engine")
+            sla = Server("Real-Time SLA Checker")
+            api = Server("Control API")
+
+        target = Server("Target System")
+
+        user >> prepare >> startup >> goose
+        goose >> Edge(color="red") >> target
+        goose >> Edge(color="purple", style="dashed", label="Metrics") >> sla
+        sla >> Edge(color="red", style="dashed", label="Breach Exec") >> startup
+        api >> Edge(color="darkgreen", label="Query / Stop") >> goose
+        goose >> Edge(color="grey", style="dotted", label="Finishes") >> shutdown
+
 # ==========================================
 # 05/06. CLOUD DEPLOYMENTS & STRATEGIES
 # ==========================================
@@ -314,6 +350,7 @@ if __name__ == "__main__":
         generate_sc_session_state(output_dir)
         generate_sc_grpc_discovery(output_dir)
         generate_sc_realtime_observability(output_dir)
+        generate_sc_chaos_engineering(output_dir)
         generate_multi_cloud_topologies(output_dir)
         generate_deployment_aws_strategies(output_dir)
         generate_deployment_gcp_strategies(output_dir)

@@ -94,6 +94,34 @@ reporting:
     interval: 10s  # push cumulative metrics every 10 seconds
 ```
 
+### 🔥 Chaos Engineering
+bzt-rs natively supports chaos engineering workflows with lifecycle hooks, real-time SLA breach actions, and a dynamic control API.
+
+```yaml
+# Inject chaos with Toxiproxy during the test
+services:
+- module: shell
+  prepare:
+  - toxiproxy-cli create db_proxy -l 0.0.0.0:13306 -u db:3306
+  startup:
+  - toxiproxy-cli toxic add -t latency -a latency=500 db_proxy
+  shutdown:
+  - toxiproxy-cli delete db_proxy
+
+# Auto-rollback on SLA breach
+reporting:
+- module: junit-xml
+  sla:
+  - metric: avg-response-time
+    threshold: 500.0
+    action: "exec:curl -X POST http://rollback/api/undo"
+
+# Live metrics & remote abort
+api:
+  enabled: true
+  port: 8000
+```
+
 ## 🏗️ Architecture
 
 `bzt-rs` follows a modular pipeline optimized for async concurrency:
@@ -105,6 +133,7 @@ reporting:
     *   **State**: `ExtractionEngine` for JSON/Regex/XPath variable capture.
     *   **Observability**: `SlaEngine` for thresholds; `InfluxDbReporter` for live telemetry.
 4.  **Integrated Mocking**: Spin up an internal Axum/Tonic server to verify your logic without a live backend.
+5.  **Chaos Engineering**: `ServiceHookExecutor` for lifecycle management; real-time SLA breach `exec:` commands; Axum `ControlAPI` for live metrics and abort.
 
 ## ⚖️ License
 
