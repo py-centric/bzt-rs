@@ -75,7 +75,7 @@ impl JUnitReporter {
 
 pub struct InfluxDbReporter;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, serde::Serialize)]
 pub struct RealTimeEndpointStats {
     pub count: usize,
     pub failures: usize,
@@ -83,9 +83,10 @@ pub struct RealTimeEndpointStats {
     pub times: Vec<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct RealTimeMetrics {
     pub endpoints: HashMap<String, RealTimeEndpointStats>,
+    #[serde(skip)]
     pub start_time: std::time::Instant,
 }
 

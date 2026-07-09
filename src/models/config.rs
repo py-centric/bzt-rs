@@ -8,6 +8,10 @@ pub struct Configuration {
     pub scenarios: HashMap<String, ScenarioDefinition>,
     #[serde(default)]
     pub reporting: Vec<ReportingDefinition>,
+    #[serde(default)]
+    pub services: Vec<ServiceDefinition>,
+    #[serde(default)]
+    pub api: Option<ApiConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -156,15 +160,53 @@ pub enum SlaMetric {
     Throughput,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SlaAction {
-    #[serde(rename = "stop")]
-    #[default]
     Stop,
-    #[serde(rename = "warn")]
     Warn,
-    #[serde(rename = "continue")]
     Continue,
+    Exec(String),
+}
+
+impl Default for SlaAction {
+    fn default() -> Self {
+        SlaAction::Stop
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for SlaAction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "stop" => Ok(SlaAction::Stop),
+            "warn" => Ok(SlaAction::Warn),
+            "continue" => Ok(SlaAction::Continue),
+            other => {
+                if other.starts_with("exec:") {
+                    Ok(SlaAction::Exec(other["exec:".len()..].to_string()))
+                } else {
+                    Ok(SlaAction::Exec(other.to_string()))
+                }
+            }
+        }
+    }
+}
+
+impl serde::Serialize for SlaAction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            SlaAction::Stop => serializer.serialize_str("stop"),
+            SlaAction::Warn => serializer.serialize_str("warn"),
+            SlaAction::Continue => serializer.serialize_str("continue"),
+            SlaAction::Exec(cmd) => serializer.serialize_str(&format!("exec:{}", cmd)),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -209,6 +251,31 @@ pub struct ReportingDefinition {
     pub failed_threshold: Option<f32>,
     #[serde(default)]
     pub sla: Vec<SlaCriterion>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceDefinition {
+    pub module: String,
+    #[serde(default)]
+    pub prepare: Vec<String>,
+    #[serde(default)]
+    pub startup: Vec<String>,
+    #[serde(default)]
+    pub shutdown: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ApiConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_api_port")]
+    pub port: u16,
+}
+
+fn default_api_port() -> u16 {
+    8000
 }
 
 #[cfg(test)]
