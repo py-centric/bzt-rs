@@ -783,6 +783,8 @@ mod tests {
             }],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let result = StateTranslator::translate(&config, None, None).await;
         assert!(result.is_ok());
@@ -855,6 +857,8 @@ mod tests {
             }],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let result = StateTranslator::translate(&config, None, None).await;
         assert!(result.is_ok());

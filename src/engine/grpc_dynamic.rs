@@ -309,7 +309,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_grpc_dynamic_discovery_and_unary() {
-        let addrs = start_mock_server(Configuration { execution: vec![], scenarios: std::collections::HashMap::new(), reporting: vec![] }).await.expect("Failed to start mock server");
+        let addrs = start_mock_server(Configuration { execution: vec![], scenarios: std::collections::HashMap::new(), reporting: vec![], services: vec![], api: None }).await.expect("Failed to start mock server");
         let grpc_host = format!("http://127.0.0.1:{}", addrs.grpc_addr.port());
         
         let client_res = DynamicGrpcClient::discover(&grpc_host).await;

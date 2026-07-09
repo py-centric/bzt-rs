@@ -129,6 +129,8 @@ impl SchemaNormalizer {
             execution,
             scenarios,
             reporting: Vec::new(),
+            services: vec![],
+            api: None,
         }
     }
 }

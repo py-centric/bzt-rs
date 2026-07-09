@@ -178,6 +178,8 @@ mod tests {
             execution: vec![],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let warnings = validate_env_refs(&config);
         assert_eq!(warnings.len(), 1);
@@ -205,6 +207,8 @@ mod tests {
             execution: vec![],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let warnings = validate_env_refs(&config);
         assert!(
@@ -250,6 +254,8 @@ mod tests {
             execution: vec![],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let warnings = validate_env_refs(&config);
         assert_eq!(warnings.len(), 1);
@@ -277,6 +283,8 @@ mod tests {
             execution: vec![],
             scenarios,
             reporting: vec![],
+            services: vec![],
+            api: None,
         };
         let warnings = validate_env_refs(&config);
         // API_KEY and DB_PASSWORD should be flagged; HOST should not

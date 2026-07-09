@@ -1,5 +1,6 @@
 use crate::engine::BztError;
 use crate::models::config::{SlaAction, SlaCriterion, SlaMetric};
+use crate::engine::reporting::RealTimeMetrics;
 
 #[derive(Debug)]
 pub struct SlaResult {
@@ -35,7 +36,7 @@ impl SlaEngine {
                 actual,
                 threshold: criterion.threshold,
                 passed,
-                action: criterion.action,
+                action: criterion.action.clone(),
                 subject: criterion.subject.clone(),
             });
         }
@@ -253,4 +254,98 @@ mod tests {
         let results = SlaEngine::evaluate(&[], &stats);
         assert!(results.is_empty());
     }
+}
+
+impl SlaEngine {
+    pub fn evaluate_realtime(
+        criteria: &[SlaCriterion],
+        stats: &RealTimeMetrics,
+    ) -> Vec<SlaResult> {
+        let mut results = Vec::new();
+        let elapsed_secs = stats.start_time.elapsed().as_secs_f32().max(1.0);
+        for criterion in criteria {
+            let actual = get_realtime_metric_value(criterion.metric, stats, criterion.subject.as_deref(), elapsed_secs);
+            let passed = actual <= criterion.threshold;
+            results.push(SlaResult {
+                metric: criterion.metric,
+                actual,
+                threshold: criterion.threshold,
+                passed,
+                action: criterion.action.clone(),
+                subject: criterion.subject.clone(),
+            });
+        }
+        results
+    }
+}
+
+fn get_realtime_metric_value(
+    metric: SlaMetric,
+    stats: &RealTimeMetrics,
+    subject: Option<&str>,
+    elapsed_secs: f32,
+) -> f32 {
+    let endpoints: Vec<&crate::engine::reporting::RealTimeEndpointStats> = if let Some(s) = subject {
+        stats
+            .endpoints
+            .get(s)
+            .into_iter()
+            .collect()
+    } else {
+        stats.endpoints.values().collect()
+    };
+
+    let total_reqs: usize = endpoints.iter().map(|e| e.count).sum();
+    let total_fails: usize = endpoints.iter().map(|e| e.failures).sum();
+
+    match metric {
+        SlaMetric::FailRate => {
+            if total_reqs == 0 {
+                0.0
+            } else {
+                total_fails as f32 / total_reqs as f32
+            }
+        }
+        SlaMetric::AvgResponseTime => {
+            let mut total_time: usize = 0;
+            let mut total_count: usize = 0;
+            for ep in &endpoints {
+                total_time += ep.total_time_ms;
+                total_count += ep.count;
+            }
+            if total_count == 0 {
+                0.0
+            } else {
+                total_time as f32 / total_count as f32
+            }
+        }
+        SlaMetric::P90ResponseTime | SlaMetric::P95ResponseTime | SlaMetric::P99ResponseTime => {
+            let pct = match metric {
+                SlaMetric::P90ResponseTime => 90.0,
+                SlaMetric::P95ResponseTime => 95.0,
+                SlaMetric::P99ResponseTime => 99.0,
+                _ => unreachable!(),
+            };
+            percentile_from_realtime(&endpoints, pct)
+        }
+        SlaMetric::Throughput => {
+            total_reqs as f32 / elapsed_secs
+        }
+    }
+}
+
+fn percentile_from_realtime(
+    endpoints: &[&crate::engine::reporting::RealTimeEndpointStats],
+    percentile: f64,
+) -> f32 {
+    let mut all_times: Vec<usize> = Vec::new();
+    for ep in endpoints {
+        all_times.extend_from_slice(&ep.times);
+    }
+    if all_times.is_empty() {
+        return 0.0;
+    }
+    all_times.sort_unstable();
+    let idx = ((percentile / 100.0) * (all_times.len() as f64 - 1.0)).round() as usize;
+    all_times[idx] as f32
 }
