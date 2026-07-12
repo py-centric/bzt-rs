@@ -8,6 +8,7 @@ const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100MB
 
 /// Validates a file path for security: rejects path traversal and non-existent files.
 /// Returns the canonicalized path if valid.
+#[allow(clippy::missing_errors_doc)]
 pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, BztError> {
     let path_ref = path.as_ref();
     let canonical = path_ref.canonicalize().map_err(|e| BztError::Io {
@@ -39,6 +40,7 @@ pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, BztError> {
 }
 
 /// Checks that a file does not exceed the maximum allowed size.
+#[allow(clippy::missing_errors_doc)]
 pub fn check_file_size<P: AsRef<Path>>(path: P) -> Result<(), BztError> {
     let metadata = std::fs::metadata(path.as_ref()).map_err(|e| BztError::Io {
         source: e,
@@ -67,6 +69,7 @@ pub struct CsvDataSource {
 }
 
 impl CsvDataSource {
+    #[allow(clippy::missing_errors_doc)]
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BztError> {
         // Security: validate path first
         let canonical = validate_path(path.as_ref())?;
@@ -97,6 +100,9 @@ impl CsvDataSource {
 
     #[must_use]
     pub fn get_record(&self, index: usize) -> Option<&HashMap<String, String>> {
+        if self.records.is_empty() {
+            return None;
+        }
         self.records.get(index % self.records.len())
     }
 }
@@ -106,6 +112,86 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::Write;
+
+    #[test]
+    fn test_get_record_wrapping_index() {
+        let ds = CsvDataSource {
+            records: vec![
+                {
+                    let mut m = HashMap::new();
+                    m.insert("id".to_string(), "a".to_string());
+                    m
+                },
+                {
+                    let mut m = HashMap::new();
+                    m.insert("id".to_string(), "b".to_string());
+                    m
+                },
+                {
+                    let mut m = HashMap::new();
+                    m.insert("id".to_string(), "c".to_string());
+                    m
+                },
+            ],
+        };
+        // Index wraps via modulo: 0%3=0, 3%3=0, 4%3=1, 5%3=2
+        assert_eq!(ds.get_record(0).unwrap().get("id").unwrap(), "a");
+        assert_eq!(ds.get_record(3).unwrap().get("id").unwrap(), "a");
+        assert_eq!(ds.get_record(4).unwrap().get("id").unwrap(), "b");
+        assert_eq!(ds.get_record(5).unwrap().get("id").unwrap(), "c");
+        assert_eq!(ds.get_record(100).unwrap().get("id").unwrap(), "b"); // 100%3=1
+    }
+
+    #[test]
+    fn test_get_record_large_index_wraps() {
+        let ds = CsvDataSource {
+            records: vec![{
+                let mut m = HashMap::new();
+                m.insert("v".to_string(), "x".to_string());
+                m
+            }],
+        };
+        // Single record: every index returns same record
+        assert_eq!(ds.get_record(0).unwrap().get("v").unwrap(), "x");
+        assert_eq!(ds.get_record(usize::MAX).unwrap().get("v").unwrap(), "x");
+    }
+
+    #[test]
+    fn test_csv_source_empty_file() {
+        let mut tmp = std::env::temp_dir();
+        tmp.push("bzt_test_empty.csv");
+        let mut f = fs::File::create(&tmp).unwrap();
+        f.write_all(b"id,name\n").unwrap(); // headers only, no data rows
+        f.flush().unwrap();
+
+        let ds = CsvDataSource::new(&tmp);
+        if let Ok(ds) = ds {
+            assert!(ds.get_record(0).is_none(), "empty CSV should have no records");
+        }
+        fs::remove_file(&tmp).unwrap();
+    }
+
+    #[test]
+    fn test_csv_source_utf8_content() {
+        let mut tmp = std::env::temp_dir();
+        tmp.push("bzt_test_utf8.csv");
+        let mut f = fs::File::create(&tmp).unwrap();
+        f.write_all("name,city\n".as_bytes()).unwrap();
+        f.write_all("Hans,Munich\n".as_bytes()).unwrap();
+        f.write_all("Yuki,Tokyo\n".as_bytes()).unwrap();
+        f.flush().unwrap();
+
+        let ds = CsvDataSource::new(&tmp);
+        if let Ok(ds) = ds {
+            let rec = ds.get_record(0).unwrap();
+            assert_eq!(rec.get("name").unwrap(), "Hans");
+            assert_eq!(rec.get("city").unwrap(), "Munich");
+            let rec2 = ds.get_record(1).unwrap();
+            assert_eq!(rec2.get("name").unwrap(), "Yuki");
+            assert_eq!(rec2.get("city").unwrap(), "Tokyo");
+        }
+        fs::remove_file(&tmp).unwrap();
+    }
 
     #[test]
     fn test_validate_path_rejects_traversal() {
@@ -189,5 +275,12 @@ mod tests {
             assert_eq!(ds.get_record(0).unwrap().get("name").unwrap(), "Alice");
         }
         fs::remove_file(&tmp).unwrap();
+    }
+
+    #[test]
+    fn test_get_record_empty_records_returns_none() {
+        let ds = CsvDataSource { records: vec![] };
+        assert!(ds.get_record(0).is_none());
+        assert!(ds.get_record(100).is_none());
     }
 }

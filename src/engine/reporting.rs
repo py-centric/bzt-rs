@@ -1,22 +1,72 @@
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap
+)]
+
 use crate::engine::BztError;
 use crate::models::config::ReportingDefinition;
 use goose::metrics::GooseMetrics;
+#[cfg(feature = "influxdb-reporter")]
+use influxdb::{Client, InfluxDbWriteable};
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Write;
-use influxdb::{Client, InfluxDbWriteable};
+#[cfg(feature = "influxdb-reporter")]
 use std::sync::OnceLock;
+#[cfg(feature = "influxdb-reporter")]
 use uuid::Uuid;
 
+/// Maximum number of timing samples to retain per endpoint.
+/// Prevents unbounded memory growth under high request rates (e.g. 10K RPS for 10 min = 6M entries).
+/// When the cap is reached, the oldest half of entries are dropped.
+const MAX_TIMINGS: usize = 10_000;
+
+/// Trait abstraction for report generators.
+///
+/// Each reporter identifies itself by module name and produces a report
+/// from aggregate metrics. The dispatch in [`crate::engine::goose`] uses
+/// this trait to avoid string-matching on module names at the call site.
+pub trait Reporter: Send + Sync {
+    /// Returns the module identifier this reporter handles
+    /// (e.g. `"junit-xml"`, `"influxdb"`).
+    fn module_name(&self) -> &str;
+
+    /// Produce the report for the given reporting definition and metrics.
+    ///
+    /// # Errors
+    ///
+    /// Returns `BztError` if report generation or writing fails.
+    fn report(
+        &self,
+        definition: &ReportingDefinition,
+        stats: &GooseMetrics,
+    ) -> Result<(), BztError>;
+}
+
+#[cfg(feature = "influxdb-reporter")]
 static WORKER_ID: OnceLock<String> = OnceLock::new();
 
+#[cfg(feature = "influxdb-reporter")]
 fn get_worker_id() -> &'static str {
     WORKER_ID.get_or_init(|| Uuid::new_v4().to_string())
+}
+
+/// Escapes a string for safe inclusion in XML text content and attributes.
+/// Prevents XML injection from user-controlled request names, methods, etc.
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 pub struct JUnitReporter;
 
 impl JUnitReporter {
+    #[allow(clippy::missing_errors_doc)]
     pub fn generate_report(
         reporting: &ReportingDefinition,
         stats: &GooseMetrics,
@@ -34,7 +84,8 @@ impl JUnitReporter {
             failures += request.fail_count;
         }
 
-        writeln!(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").map_err(|e| BztError::Internal(e.to_string()))?;
+        writeln!(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+            .map_err(|e| BztError::Internal(e.to_string()))?;
         writeln!(file, "<testsuites>").map_err(|e| BztError::Internal(e.to_string()))?;
         writeln!(
             file,
@@ -48,18 +99,20 @@ impl JUnitReporter {
             } else {
                 0.0
             };
+            // Security: escape request names to prevent XML injection
+            let safe_name = xml_escape(name);
+            let safe_method = xml_escape(&format!("{:?}", request.method).to_uppercase());
             writeln!(
                 file,
                 "    <testcase name=\"{}\" time=\"{:.3}\">",
-                name,
+                safe_name,
                 avg_time / 1000.0
             )
             .map_err(|e| BztError::Internal(e.to_string()))?;
             if request.fail_count > 0 {
                 writeln!(
                     file,
-                    "      <failure message=\"Request failed: {} {}\" type=\"Error\" />",
-                    request.method, name
+                    "      <failure message=\"Request failed: {safe_method} {safe_name}\" type=\"Error\" />",
                 )
                 .map_err(|e| BztError::Internal(e.to_string()))?;
             }
@@ -73,6 +126,21 @@ impl JUnitReporter {
     }
 }
 
+impl Reporter for JUnitReporter {
+    fn module_name(&self) -> &'static str {
+        "junit-xml"
+    }
+
+    fn report(
+        &self,
+        definition: &ReportingDefinition,
+        stats: &GooseMetrics,
+    ) -> Result<(), BztError> {
+        Self::generate_report(definition, stats)
+    }
+}
+
+#[cfg(feature = "influxdb-reporter")]
 pub struct InfluxDbReporter;
 
 #[derive(Debug, Default, Clone, serde::Serialize)]
@@ -81,6 +149,19 @@ pub struct RealTimeEndpointStats {
     pub failures: usize,
     pub total_time_ms: usize,
     pub times: Vec<usize>,
+}
+
+impl RealTimeEndpointStats {
+    /// Push a timing sample, capping at `MAX_TIMINGS` to prevent memory leaks.
+    /// When the cap is reached, the oldest half of entries are dropped.
+    pub fn push_time(&mut self, time: usize) {
+        if self.times.len() >= MAX_TIMINGS {
+            // Compact: drop the oldest half to amortize the cost.
+            // At 10K RPS this triggers once every 0.5 s and copies ~40 KB.
+            self.times.drain(..MAX_TIMINGS / 2);
+        }
+        self.times.push(time);
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -99,7 +180,9 @@ impl Default for RealTimeMetrics {
     }
 }
 
+#[cfg(feature = "influxdb-reporter")]
 impl InfluxDbReporter {
+    #[allow(clippy::missing_errors_doc)]
     pub async fn push_metrics(
         reporting: &ReportingDefinition,
         stats: &GooseMetrics,
@@ -113,19 +196,21 @@ impl InfluxDbReporter {
         let token = reporting.token.as_deref().unwrap_or("");
 
         let client = Client::new(url, bucket).with_token(token);
-        let points = Self::generate_points(stats);
+        let points = Self::generate_points(stats)?;
         let point_count = points.len();
 
         for point in points {
-            client.query(point).await.map_err(|e| BztError::Internal(
-                format!("InfluxDB push failed: {}", e)
-            ))?;
+            client
+                .query(point)
+                .await
+                .map_err(|e| BztError::Internal(format!("InfluxDB push failed: {e}")))?;
         }
 
         tracing::info!("[INFLUX] Pushed {} points to {}", point_count, url);
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub async fn push_real_time_metrics(
         reporting: &ReportingDefinition,
         metrics: &RealTimeMetrics,
@@ -139,7 +224,7 @@ impl InfluxDbReporter {
         let token = reporting.token.as_deref().unwrap_or("");
 
         let client = Client::new(url, bucket).with_token(token);
-        
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -148,19 +233,25 @@ impl InfluxDbReporter {
 
         let mut points = Vec::new();
         for (name, stats) in &metrics.endpoints {
-            if stats.count == 0 { continue; }
-            
+            if stats.count == 0 {
+                continue;
+            }
+
             let avg_time = stats.total_time_ms as f64 / stats.count as f64;
             let mut sorted_times = stats.times.clone();
             sorted_times.sort_unstable();
-            
-            let p95 = if !sorted_times.is_empty() {
+
+            let p95 = if sorted_times.is_empty() {
+                0.0
+            } else {
                 let val: f64 = 0.95 * (sorted_times.len() as f64 - 1.0);
                 let idx = val.round() as usize;
                 sorted_times[idx] as f32
-            } else { 0.0 };
+            };
 
-            let point = timestamp.into_query("request_metrics_realtime")
+            let point = timestamp
+                .try_into_query("request_metrics_realtime")
+                .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
                 .add_tag("path", name.clone())
                 .add_tag("worker_id", get_worker_id())
                 .add_field("count", stats.count as i64)
@@ -171,16 +262,17 @@ impl InfluxDbReporter {
         }
 
         for point in points {
-            client.query(point).await.map_err(|e| BztError::Internal(
-                format!("InfluxDB real-time push failed: {}", e)
-            ))?;
+            client
+                .query(point)
+                .await
+                .map_err(|e| BztError::Internal(format!("InfluxDB real-time push failed: {e}")))?;
         }
 
         Ok(())
     }
 
-    #[must_use]
-    pub fn generate_points(stats: &GooseMetrics) -> Vec<influxdb::WriteQuery> {
+    #[allow(clippy::missing_errors_doc)]
+    pub fn generate_points(stats: &GooseMetrics) -> Result<Vec<influxdb::WriteQuery>, BztError> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -196,7 +288,9 @@ impl InfluxDbReporter {
                 0.0
             };
 
-            let point = timestamp.into_query("request_metrics")
+            let point = timestamp
+                .try_into_query("request_metrics")
+                .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
                 .add_tag("path", name.clone())
                 .add_tag("method", format!("{:?}", agg.method).to_uppercase())
                 .add_tag("worker_id", get_worker_id())
@@ -209,15 +303,44 @@ impl InfluxDbReporter {
         }
 
         // Add a global point
-        let global_point = timestamp.into_query("test_summary")
+        let global_point = timestamp
+            .try_into_query("test_summary")
+            .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
             .add_tag("worker_id", get_worker_id())
-            .add_field("total_requests", stats.requests.values().map(|r| r.raw_data.counter).sum::<usize>() as i64)
-            .add_field("total_failures", stats.requests.values().map(|r| r.fail_count).sum::<usize>() as i64)
+            .add_field(
+                "total_requests",
+                stats
+                    .requests
+                    .values()
+                    .map(|r| r.raw_data.counter)
+                    .sum::<usize>() as i64,
+            )
+            .add_field(
+                "total_failures",
+                stats.requests.values().map(|r| r.fail_count).sum::<usize>() as i64,
+            )
             .add_field("duration_secs", stats.duration as i64)
             .add_field("max_users", stats.maximum_users as i64);
         points.push(global_point);
-        
-        points
+
+        Ok(points)
+    }
+}
+
+#[cfg(feature = "influxdb-reporter")]
+impl Reporter for InfluxDbReporter {
+    fn module_name(&self) -> &'static str {
+        "influxdb"
+    }
+
+    fn report(
+        &self,
+        definition: &ReportingDefinition,
+        stats: &GooseMetrics,
+    ) -> Result<(), BztError> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(Self::push_metrics(definition, stats))
+        })
     }
 }
 
@@ -246,7 +369,7 @@ pub struct CliSummary {
     pub endpoints: Vec<EndpointSummary>,
 }
 
-/// Computes the p-th percentile from a BTreeMap of response time -> count.
+/// Computes the p-th percentile from a `BTreeMap` of response time -> count.
 /// Returns the response time value at the given percentile.
 #[must_use]
 pub fn percentile(times: &BTreeMap<usize, usize>, p: f64) -> f64 {
@@ -301,7 +424,11 @@ impl CliSummary {
 
             endpoints.push(EndpointSummary {
                 method: format!("{:?}", agg.method).to_uppercase(),
-                path: name.clone(),
+                path: if name.len() > 40 {
+                    format!("{}…", &name[..37])
+                } else {
+                    name.clone()
+                },
                 count,
                 failures,
                 avg_response_time_ms: avg_time,
@@ -352,8 +479,8 @@ impl CliSummary {
             println!(
                 "  {:<8} {:<40} {:>8} {:>8} {:>10.1} {:>10.1} {:>10.1}",
                 ep.method,
-                if ep.path.len() > 39 {
-                    format!("{}…", &ep.path[..38])
+                if ep.path.len() > 40 {
+                    format!("{}…", &ep.path[..37])
                 } else {
                     ep.path.clone()
                 },
@@ -369,12 +496,85 @@ impl CliSummary {
     }
 }
 
+impl Reporter for CliSummary {
+    fn module_name(&self) -> &'static str {
+        "cli-summary"
+    }
+
+    fn report(
+        &self,
+        _definition: &ReportingDefinition,
+        stats: &GooseMetrics,
+    ) -> Result<(), BztError> {
+        let summary = Self::from_metrics(stats);
+        summary.print();
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use goose::metrics::{GooseRequestMetricAggregate, GooseRequestMetricTimingData};
     use goose::prelude::GooseMethod;
     use std::collections::HashMap;
+
+    // --- xml_escape tests ---
+
+    #[test]
+    fn test_xml_escape_ampersand() {
+        assert_eq!(xml_escape("a&b"), "a&amp;b");
+    }
+
+    #[test]
+    fn test_xml_escape_less_than() {
+        assert_eq!(xml_escape("a<b"), "a&lt;b");
+    }
+
+    #[test]
+    fn test_xml_escape_greater_than() {
+        assert_eq!(xml_escape("a>b"), "a&gt;b");
+    }
+
+    #[test]
+    fn test_xml_escape_double_quote() {
+        assert_eq!(xml_escape(r#"a"b"#), "a&quot;b");
+    }
+
+    #[test]
+    fn test_xml_escape_single_quote() {
+        assert_eq!(xml_escape("a'b"), "a&apos;b");
+    }
+
+    #[test]
+    fn test_xml_escape_all_special_chars() {
+        let input = "a&b<c>d\"e'f";
+        let expected = "a&amp;b&lt;c&gt;d&quot;e&apos;f";
+        assert_eq!(xml_escape(input), expected);
+    }
+
+    #[test]
+    fn test_xml_escape_empty_string() {
+        assert_eq!(xml_escape(""), "");
+    }
+
+    #[test]
+    fn test_xml_escape_no_special_chars() {
+        assert_eq!(xml_escape("Hello World 123"), "Hello World 123");
+    }
+
+    #[test]
+    fn test_xml_escape_multiple_ampersands() {
+        assert_eq!(xml_escape("&&"), "&amp;&amp;");
+    }
+
+    #[test]
+    fn test_xml_escape_xml_injection_prevention() {
+        let malicious = "<script>alert('xss')</script>";
+        let escaped = xml_escape(malicious);
+        assert!(!escaped.contains("<script>"));
+        assert!(escaped.contains("&lt;script&gt;"));
+    }
 
     fn make_timing(times: Vec<(usize, usize)>) -> GooseRequestMetricTimingData {
         let mut data = GooseRequestMetricTimingData {
@@ -491,14 +691,88 @@ mod tests {
         assert!(summary.endpoints.is_empty());
     }
 
+    #[cfg(feature = "influxdb-reporter")]
     #[test]
     fn test_influxdb_point_generation() {
         let timing = make_timing(vec![(100, 10)]);
         let (name, agg) = make_aggregate("/api/influx", GooseMethod::Get, 10, 0, timing);
         let metrics = make_metrics(vec![(name, agg)]);
 
-        let points = InfluxDbReporter::generate_points(&metrics);
+        let points = InfluxDbReporter::generate_points(&metrics).unwrap();
         // Expect one per endpoint + one global
         assert_eq!(points.len(), 2);
+    }
+
+    #[test]
+    fn test_percentile_zero_total_count() {
+        // BTreeMap with entries that all have 0 count
+        let mut times = BTreeMap::new();
+        times.insert(100, 0);
+        times.insert(200, 0);
+        // total = 0, so percentile should return 0.0
+        assert_eq!(percentile(&times, 95.0), 0.0);
+    }
+
+    #[test]
+    fn test_percentile_p50() {
+        let mut times = BTreeMap::new();
+        times.insert(10, 5);
+        times.insert(20, 5);
+        // 10 total, p50 target = 5th request -> should be 10
+        assert!((percentile(&times, 50.0) - 10.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_cli_summary_long_path_truncation() {
+        let long_path = "/api/v1/users/".repeat(5); // 75 chars
+        let timing = make_timing(vec![(100, 1)]);
+        let (name, agg) = make_aggregate(&long_path, GooseMethod::Get, 1, 0, timing);
+        let metrics = make_metrics(vec![(name, agg)]);
+        let summary = CliSummary::from_metrics(&metrics);
+        // Path should be truncated to 39 chars + ellipsis
+        assert!(summary.endpoints[0].path.len() <= 40);
+    }
+
+    #[test]
+    fn test_cli_summary_multiple_endpoints_sorted_by_count() {
+        let t1 = make_timing(vec![(50, 5)]);
+        let t2 = make_timing(vec![(100, 20)]);
+        let (n1, a1) = make_aggregate("/api/low", GooseMethod::Get, 5, 0, t1);
+        let (n2, a2) = make_aggregate("/api/high", GooseMethod::Post, 20, 0, t2);
+        let metrics = make_metrics(vec![(n1, a1), (n2, a2)]);
+        let summary = CliSummary::from_metrics(&metrics);
+        // Should be sorted by count descending
+        assert_eq!(summary.endpoints[0].path, "/api/high");
+        assert_eq!(summary.endpoints[1].path, "/api/low");
+    }
+
+    #[cfg(feature = "influxdb-reporter")]
+    #[test]
+    fn test_influxdb_multiple_endpoints() {
+        let t1 = make_timing(vec![(100, 5)]);
+        let t2 = make_timing(vec![(200, 3)]);
+        let (n1, a1) = make_aggregate("/api/a", GooseMethod::Get, 5, 0, t1);
+        let (n2, a2) = make_aggregate("/api/b", GooseMethod::Post, 3, 0, t2);
+        let metrics = make_metrics(vec![(n1, a1), (n2, a2)]);
+        let points = InfluxDbReporter::generate_points(&metrics).unwrap();
+        // 2 endpoints + 1 global = 3
+        assert_eq!(points.len(), 3);
+    }
+
+    #[test]
+    fn test_real_time_metrics_default() {
+        let metrics = RealTimeMetrics::default();
+        assert!(metrics.endpoints.is_empty());
+        // start_time should be approximately now
+        assert!(metrics.start_time.elapsed().as_secs() < 5);
+    }
+
+    #[test]
+    fn test_real_time_endpoint_stats_default() {
+        let stats = RealTimeEndpointStats::default();
+        assert_eq!(stats.count, 0);
+        assert_eq!(stats.failures, 0);
+        assert_eq!(stats.total_time_ms, 0);
+        assert!(stats.times.is_empty());
     }
 }
