@@ -7,6 +7,7 @@ use std::path::Path;
 pub struct YamlParser;
 
 impl YamlParser {
+    #[allow(clippy::missing_errors_doc)]
     pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, BztError> {
         let path = path.as_ref();
         let content = fs::read_to_string(path)?;

@@ -1,6 +1,38 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Protocol {
+    Http,
+    Websocket,
+    #[serde(alias = "ws")]
+    Ws,
+    Grpc,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Head,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum GrpcMode {
+    #[serde(alias = "server")]
+    ServerStreaming,
+    #[serde(alias = "client")]
+    ClientStreaming,
+    #[serde(alias = "bidi")]
+    BidiStreaming,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Configuration {
@@ -90,7 +122,8 @@ pub enum HTTPRequestDefinition {
 #[serde(deny_unknown_fields)]
 pub struct DetailedRequest {
     pub url: String,
-    pub method: Option<String>,
+    #[serde(default)]
+    pub method: Option<HttpMethod>,
     pub headers: Option<HashMap<String, String>>,
     pub body: Option<String>,
     /// Human-readable label for metrics/reporting.
@@ -113,13 +146,15 @@ pub struct DetailedRequest {
     #[serde(default)]
     pub assert: Vec<AssertionDefinition>,
     /// Protocol override (e.g. "websocket", "grpc")
-    pub protocol: Option<String>,
+    #[serde(default)]
+    pub protocol: Option<Protocol>,
     /// WebSocket message to send
     pub message: Option<String>,
     /// gRPC service method
     pub method_name: Option<String>,
     #[serde(rename = "grpc-mode")]
-    pub grpc_mode: Option<String>,
+    #[serde(default)]
+    pub grpc_mode: Option<GrpcMode>,
     #[serde(default)]
     pub messages: Vec<String>,
     /// Conditional execution: `variable_name` == value
@@ -160,18 +195,13 @@ pub enum SlaMetric {
     Throughput,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum SlaAction {
+    #[default]
     Stop,
     Warn,
     Continue,
     Exec(String),
-}
-
-impl Default for SlaAction {
-    fn default() -> Self {
-        SlaAction::Stop
-    }
 }
 
 impl<'de> serde::Deserialize<'de> for SlaAction {
@@ -185,8 +215,8 @@ impl<'de> serde::Deserialize<'de> for SlaAction {
             "warn" => Ok(SlaAction::Warn),
             "continue" => Ok(SlaAction::Continue),
             other => {
-                if other.starts_with("exec:") {
-                    Ok(SlaAction::Exec(other["exec:".len()..].to_string()))
+                if let Some(stripped) = other.strip_prefix("exec:") {
+                    Ok(SlaAction::Exec(stripped.to_string()))
                 } else {
                     Ok(SlaAction::Exec(other.to_string()))
                 }
@@ -204,7 +234,7 @@ impl serde::Serialize for SlaAction {
             SlaAction::Stop => serializer.serialize_str("stop"),
             SlaAction::Warn => serializer.serialize_str("warn"),
             SlaAction::Continue => serializer.serialize_str("continue"),
-            SlaAction::Exec(cmd) => serializer.serialize_str(&format!("exec:{}", cmd)),
+            SlaAction::Exec(cmd) => serializer.serialize_str(&format!("exec:{cmd}")),
         }
     }
 }
@@ -239,6 +269,7 @@ fn default_subject() -> String {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct ReportingDefinition {
     pub module: String,
     pub filename: Option<String>,

@@ -81,26 +81,48 @@ async fn main() -> Result<(), BztError> {
     }
 
     if args.mock {
-        let _ = engine::mock::start_mock_server(config).await?;
-        println!("Mock server is running. Press Ctrl+C to stop.");
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        #[cfg(feature = "grpc")]
+        {
+            let _ = engine::mock::start_mock_server(config).await?;
+            println!("Mock server is running. Press Ctrl+C to stop.");
+            loop {
+                tokio::time::sleep(std::time::Duration::from_hours(1)).await;
+            }
+        }
+        #[cfg(not(feature = "grpc"))]
+        {
+            let _ = config;
+            return Err(BztError::Internal(
+                "Mock server requires the 'grpc' feature".to_string(),
+            ));
         }
     }
 
     if args.mock_run {
-        println!("Starting integrated mock run...");
-        let addrs = engine::mock::start_mock_server(config.clone()).await?;
-        let host_override = format!("http://{}", addrs.http_addr);
+        #[cfg(feature = "grpc")]
+        {
+            println!("Starting integrated mock run...");
+            let addrs = engine::mock::start_mock_server(config.clone()).await?;
+            let host_override = format!("http://{}", addrs.http_addr);
 
-        let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
-        let _stats = attack
-            .execute()
-            .await
-            .map_err(|e| BztError::Goose(Box::new(e)))?;
+            let attack =
+                bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None)
+                    .await?;
+            let _stats = attack
+                .execute()
+                .await
+                .map_err(|e| BztError::Goose(Box::new(e)))?;
 
-        println!("Integrated mock run complete.");
-        return Ok(());
+            println!("Integrated mock run complete.");
+            return Ok(());
+        }
+        #[cfg(not(feature = "grpc"))]
+        {
+            let _ = config;
+            return Err(BztError::Internal(
+                "Mock run requires the 'grpc' feature".to_string(),
+            ));
+        }
     }
 
     engine::goose::run_attack(config).await?;

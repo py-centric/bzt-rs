@@ -105,11 +105,10 @@ impl SchemaNormalizer {
                             HTTPRequestDefinition::Simple(url) => {
                                 new_requests.push(HTTPRequestDefinition::Detailed(Box::new(
                                     DetailedRequest {
-                                        url: url.to_string(),
+                                        url: url.clone(),
                                         on_start: true,
                                         ..Default::default()
-                                    }
-
+                                    },
                                 )));
                             }
                             HTTPRequestDefinition::Detailed(detailed) => {
