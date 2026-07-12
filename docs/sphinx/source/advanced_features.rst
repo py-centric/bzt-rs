@@ -142,7 +142,18 @@ accurate data aggregation in Grafana dashboards.
 
 Control Flow: Conditions & Loops
 ---------------------------------
-...
+Use ``if`` and ``loop`` directives on requests for conditional and polling
+behavior:
+
+* **Conditional Execution (``if``)**: Only execute the request if the
+  condition evaluates to true.
+
+  .. code-block:: yaml
+
+     requests:
+     - url: /api/admin
+       if: "${role}" == "admin"
+
 * **Polling Loops (``loop``)**:
   Repeatedly execute a request until a condition is satisfied. Supports numeric
   comparisons and boolean logic.
@@ -223,15 +234,16 @@ After every test run, bzt-rs outputs a terminal summary table:
 
 .. code-block:: text
 
-   ===== Test Results =====
-   Duration: 60.0s    Users: 10
-   Total Requests: 600    Failed: 0 (0.00%)
-   Avg Latency: 45ms    p95: 120ms    p99: 250ms
-
-     Method  Path              Count    Failed    Avg(ms)    p95(ms)
-     ------  ----              -----    ------    -------    -------
-     GET     /api/status       300      0         32         85
-     POST    /api/login        300      0         58         150
+   ==========================================================================================
+     BZT-RS LOAD TEST SUMMARY
+   ==========================================================================================
+     Duration: 60s  |  Max Users: 10  |  Total Requests: 600  |  Failures: 0 (0.0%)
+   ------------------------------------------------------------------------------------------
+     Method   Path                                     Requests    Fails    Avg(ms)  p95(ms)  p99(ms)
+   ------------------------------------------------------------------------------------------
+     GET      /api/status                                300        0        32.0     85.0    120.0
+     POST     /api/login                                 300        0        58.0    150.0    250.0
+   ------------------------------------------------------------------------------------------
 
 The report includes per-endpoint breakdowns of request count, failure count,
-average latency, and p95/p99 latency percentiles.
+average latency, and p95/p99 latency percentiles, sorted by request count.

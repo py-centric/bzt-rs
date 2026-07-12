@@ -33,8 +33,6 @@ Defines "how" the load should be generated:
 
 * **hold-for**: Total duration of the test (e.g., ``5m``, ``1h``).
 
-* **iterations**: Number of times each user should execute the scenario.
-
 * **scenario**: Name of the scenario to execute from the ``scenarios`` block.
 
 * **throughput**: Target requests per second (applied as a Goose throttle).
@@ -82,11 +80,11 @@ Data sources can be specified as a simple path string or a structured object:
      data-test:
        data-sources:
          - users.csv               # Simple path (comma-delimited, quoted)
-         - path: products.csv      # Structured definition
-           delimiter: ";"
-           quoted: true
-           loop_data: true
-           random_order: false
+          - path: products.csv      # Structured definition
+            delimiter: ";"
+            quoted: true
+            loop_data: true
+            ordered: false
 
 Structured fields:
 
@@ -94,7 +92,7 @@ Structured fields:
 * **delimiter** (optional): CSV delimiter character. Default: ``,``.
 * **quoted** (optional): Whether fields are quoted. Default: ``true``.
 * **loop_data** (optional): Loop back to start when reaching end. Default: ``true``.
-* **random_order** (optional): Select records in random order. Default: ``false``.
+* **ordered** (optional): Select records in order (false = by user index). Default: ``false``.
 
 ### Taurus YAML (Standard)
 A complete, standard Taurus YAML configuration example:
