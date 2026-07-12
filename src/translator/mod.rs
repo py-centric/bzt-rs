@@ -1,3 +1,11 @@
+mod body;
+mod context;
+mod metrics_recorder;
+
+use body::resolve_body;
+use context::{GrpcClients, TransactionContext};
+use metrics_recorder::record_request;
+
 use crate::engine::BztError;
 use crate::engine::control_flow::{AssertionEngine, ControlFlowEngine};
 use crate::engine::data_sources::CsvDataSource;
@@ -7,24 +15,51 @@ use crate::engine::macros::MacroEvaluator;
 use crate::engine::pacing::PacingEngine;
 use crate::engine::reporting::RealTimeMetrics;
 use crate::engine::utils::parse_time_to_ms;
-use crate::models::config::{Configuration, HTTPRequestDefinition};
+use crate::models::config::{Configuration, HttpMethod, HTTPRequestDefinition, Protocol};
+#[cfg(feature = "grpc")]
+use crate::models::config::GrpcMode;
 use futures_util::{SinkExt, StreamExt};
 use goose::prelude::*;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
-use crate::engine::grpc_dynamic::DynamicGrpcClient;
+/// Logs a macro evaluation error and returns `Ok(())` to skip the transaction.
+/// Sensitive env vars are rejected (never injected) but the load test continues.
+fn log_macro_error(e: &BztError) {
+    tracing::error!("[SECURITY] Macro evaluation blocked: {e}");
+}
+
+/// Evaluates macros, rejecting sensitive env vars. On rejection, logs the security
+/// error and performs an early `return Ok(())` from the enclosing transaction closure.
+macro_rules! eval_macros {
+    ($expr:expr) => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                log_macro_error(&e);
+                return Ok(());
+            }
+        }
+    };
+}
 
 pub struct StateTranslator;
 
 impl StateTranslator {
+    #[allow(clippy::too_many_lines, clippy::cast_possible_truncation)]
+    /// Translates a BZT configuration into a Goose attack.
+    ///
+    /// # Errors
+    ///
+    /// Returns `BztError` if translation from BZT configuration to Goose fails.
+    #[allow(clippy::unused_async)]
     pub async fn translate(
         config: &Configuration,
         host_override: Option<String>,
-        real_time_metrics: Option<Arc<Mutex<RealTimeMetrics>>>,
+        real_time_metrics: Option<Arc<RwLock<RealTimeMetrics>>>,
     ) -> Result<GooseAttack, BztError> {
         let mut configuration = goose::config::GooseConfiguration::default();
 
@@ -32,7 +67,10 @@ impl StateTranslator {
         for report_def in &config.reporting {
             if report_def.module == "html" {
                 configuration.report_file = vec![
-                    report_def.filename.clone().unwrap_or_else(|| "report.html".to_string())
+                    report_def
+                        .filename
+                        .clone()
+                        .unwrap_or_else(|| "report.html".to_string()),
                 ];
             }
         }
@@ -40,27 +78,37 @@ impl StateTranslator {
         let mut attack = GooseAttack::initialize_with_config(configuration)
             .map_err(|e| BztError::Goose(Box::new(e)))?;
 
-        // 1. Discovery phase for gRPC reflection
-        let mut grpc_clients = HashMap::new();
-        for scenario in config.scenarios.values() {
-            for req in &scenario.requests {
-                if let HTTPRequestDefinition::Detailed(d) = req {
-                    let is_grpc = d.protocol.as_deref() == Some("grpc");
-                    if is_grpc {
-                        let host = host_override.clone().unwrap_or_else(|| d.url.clone());
-                        if let std::collections::hash_map::Entry::Vacant(e) = grpc_clients.entry(host.clone()) {
-                            tracing::info!("[DISCOVERY] Performing gRPC reflection for {}", host);
-                            if let Ok(client) = DynamicGrpcClient::discover(&host).await {
-                                e.insert(Arc::new(client));
-                            } else {
-                                tracing::warn!("[DISCOVERY] gRPC reflection failed for {}. Fallback to static or mock client.", host);
+        // 1. Discovery phase for gRPC reflection (only when grpc feature is enabled)
+        #[cfg(feature = "grpc")]
+        let grpc_clients: GrpcClients = {
+            let mut clients = HashMap::new();
+            for scenario in config.scenarios.values() {
+                for req in &scenario.requests {
+                    if let HTTPRequestDefinition::Detailed(d) = req {
+                        let is_grpc = d.protocol == Some(Protocol::Grpc);
+                        if is_grpc {
+                            let host = host_override.clone().unwrap_or_else(|| d.url.clone());
+                            if let std::collections::hash_map::Entry::Vacant(e) =
+                                clients.entry(host.clone())
+                            {
+                                tracing::info!("[DISCOVERY] Performing gRPC reflection for {}", host);
+                                if let Ok(client) = DynamicGrpcClient::discover(&host).await {
+                                    e.insert(Arc::new(client));
+                                } else {
+                                    tracing::warn!(
+                                        "[DISCOVERY] gRPC reflection failed for {}. Fallback to static or mock client.",
+                                        host
+                                    );
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        let grpc_clients = Arc::new(grpc_clients);
+            Arc::new(clients)
+        };
+        #[cfg(not(feature = "grpc"))]
+        let grpc_clients: GrpcClients = ();
 
         // Load data sources
         let mut data_sources = HashMap::new();
@@ -83,7 +131,10 @@ impl StateTranslator {
                 .set_default(GooseDefault::Users, exec.concurrency)
                 .map_err(|e| BztError::Goose(Box::new(e)))?;
             attack = *attack
-                .set_default(GooseDefault::RunTime, parse_time_to_ms(&exec.hold_for) as usize / 1000)
+                .set_default(
+                    GooseDefault::RunTime,
+                    parse_time_to_ms(&exec.hold_for) as usize / 1000,
+                )
                 .map_err(|e| BztError::Goose(Box::new(e)))?;
             attack = *attack
                 .set_default(GooseDefault::HatchRate, hatch_rate.as_str())
@@ -134,20 +185,18 @@ impl StateTranslator {
                     .set_on_start(),
                 );
 
-                let scenario_headers = scenario_def.headers.clone();
-                let ds_map = Arc::clone(&data_sources);
-                let scenario_name_clone = scenario_name.clone();
+                let ctx = TransactionContext {
+                    scenario_name: Arc::new(scenario_name.clone()),
+                    scenario_headers: Arc::new(scenario_def.headers.clone()),
+                    data_sources: Arc::clone(&data_sources),
+                    real_time_metrics: real_time_metrics.clone(),
+                    #[allow(clippy::clone_on_copy)]
+                    grpc_clients: grpc_clients.clone(),
+                };
 
                 for req in &scenario_def.requests {
-                    let transaction = Self::build_transaction(
-                        req,
-                        &scenario_name_clone,
-                        &scenario_headers,
-                        &ds_map,
-                        exec.pacing.clone(),
-                        real_time_metrics.clone(),
-                        grpc_clients.clone(),
-                    );
+                    let transaction =
+                        Self::build_transaction(req, &ctx, exec.pacing.clone());
 
                     scenario = scenario.register_transaction(transaction);
                 }
@@ -158,28 +207,28 @@ impl StateTranslator {
         Ok(attack)
     }
 
+    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::items_after_statements)]
     fn build_transaction(
         req: &HTTPRequestDefinition,
-        scenario_name: &str,
-        scenario_headers: &Option<HashMap<String, String>>,
-        ds_map: &Arc<HashMap<String, Vec<Arc<CsvDataSource>>>>,
+        ctx: &TransactionContext,
         pacing: Option<crate::models::config::PacingConfig>,
-        real_time_metrics: Option<Arc<Mutex<RealTimeMetrics>>>,
-        grpc_clients: Arc<HashMap<String, Arc<DynamicGrpcClient>>>,
     ) -> Transaction {
         let req_clone = req.clone();
-        let ds_map = Arc::clone(ds_map);
-        let scenario_name = scenario_name.to_string();
-        let scenario_headers = scenario_headers.clone();
+        let ctx = ctx.clone();
+        // Wrap in Arc to avoid cloning PacingConfig per-request.
+        let pacing = pacing.map(Arc::new);
 
         let mut transaction = Transaction::new(Arc::new(move |user| {
             let req = req_clone.clone();
-            let ds_map = Arc::clone(&ds_map);
-            let scenario_name = scenario_name.clone();
-            let scenario_headers = scenario_headers.clone();
+            let ctx = ctx.clone();
             let pacing = pacing.clone();
-            let rt_metrics = real_time_metrics.clone();
-            let grpc_cls = grpc_clients.clone();
+            // Destructure context into the variable names the rest of the
+            // closure body already uses so downstream code needs no changes.
+            let scenario_name = ctx.scenario_name;
+            let scenario_headers = ctx.scenario_headers;
+            let ds_map = ctx.data_sources;
+            let rt_metrics = ctx.real_time_metrics;
 
             Box::pin(async move {
                 // Apply pacing delay before each request if configured
@@ -188,14 +237,9 @@ impl StateTranslator {
                     tokio::time::sleep(delay).await;
                 }
 
-                let mut variables = HashMap::new();
-                if let Some(session) = user.get_session_data::<UserSession>() {
-                    variables = session.variables.clone();
-                }
-
                 // Get record from data source if available
                 let mut record = None;
-                if let Some(ds_list) = ds_map.get(&scenario_name)
+                if let Some(ds_list) = ds_map.get(scenario_name.as_ref())
                     && !ds_list.is_empty()
                 {
                     record = ds_list[0].get_record(user.weighted_users_index);
@@ -203,36 +247,52 @@ impl StateTranslator {
 
                 match req {
                     HTTPRequestDefinition::Simple(url) => {
-                        let url = Interpolator::interpolate(&url, &variables);
-                        let final_url = MacroEvaluator::evaluate(&url, record);
+                        // Borrow session variables directly — no clone needed because
+                        // Simple requests never call get_session_data_mut.
+                        let empty_vars = HashMap::new();
+                        let variables = user
+                            .get_session_data::<UserSession>()
+                            .map_or(&empty_vars, |s| &s.variables);
+                        let url = Interpolator::interpolate(&url, variables);
+                        let final_url = eval_macros!(MacroEvaluator::evaluate(&url, record));
                         let _ = user.get(&final_url).await?;
                     }
                     HTTPRequestDefinition::Detailed(d) => {
+                        // Clone is required here because extraction code later calls
+                        // get_session_data_mut, which invalidates any live references
+                        // to session variables.
+                        let mut variables = user
+                            .get_session_data::<UserSession>()
+                            .map(|s| s.variables.clone())
+                            .unwrap_or_default();
+
                         // REQ-5.4: Control Flow (if)
-                        if let Some(cond) = &d.execute_if && !ControlFlowEngine::evaluate_condition(cond, &variables) {
+                        if let Some(cond) = &d.execute_if
+                            && !ControlFlowEngine::evaluate_condition(cond, &variables)
+                        {
                             return Ok(());
                         }
 
                         let url = Interpolator::interpolate(&d.url, &variables);
-                        let final_url = MacroEvaluator::evaluate(&url, record);
+                        let final_url = eval_macros!(MacroEvaluator::evaluate(&url, record));
                         let full_url = user.build_url(&final_url)?;
-                        let request_name = d
-                            .label
-                            .as_deref()
-                            .map(|l| MacroEvaluator::evaluate(l, record))
-                            .unwrap_or_else(|| final_url.clone());
+                        let request_name = match &d.label {
+                            Some(l) => eval_macros!(MacroEvaluator::evaluate(l, record)),
+                            None => final_url.clone(),
+                        };
 
                         // REQ-5.4: Control Flow (loop)
                         let mut loop_count = 0;
                         loop {
                             if let Some(cond) = &d.loop_while
-                                && (!ControlFlowEngine::evaluate_condition(cond, &variables) || loop_count > 100)
+                                && (!ControlFlowEngine::evaluate_condition(cond, &variables)
+                                    || loop_count > 100)
                             {
                                 break;
                             }
 
-                            match d.protocol.as_deref() {
-                                Some("websocket" | "ws") => {
+                            match d.protocol {
+                                Some(Protocol::Websocket | Protocol::Ws) => {
                                     tracing::debug!("[WS] Connecting to {}", full_url);
                                     let start = std::time::Instant::now();
                                     match connect_async(&full_url).await {
@@ -241,10 +301,12 @@ impl StateTranslator {
                                             if let Some(msg) = &d.message {
                                                 let final_msg =
                                                     Interpolator::interpolate(msg, &variables);
-                                                let final_msg =
-                                                    MacroEvaluator::evaluate(&final_msg, record);
-                                                if let Err(e) =
-                                                    ws_stream.send(Message::Text(final_msg.into())).await
+                                                let final_msg = eval_macros!(
+                                                    MacroEvaluator::evaluate(&final_msg, record)
+                                                );
+                                                if let Err(e) = ws_stream
+                                                    .send(Message::Text(final_msg.into()))
+                                                    .await
                                                 {
                                                     tracing::error!("[WS] Send failed: {}", e);
                                                     success = false;
@@ -255,16 +317,12 @@ impl StateTranslator {
                                             let duration = start.elapsed().as_millis() as usize;
 
                                             // Update real-time metrics
-                                            if let Some(ref rtm) = rt_metrics {
-                                                let mut lock = rtm.lock().unwrap();
-                                                let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                stats.count += 1;
-                                                stats.total_time_ms += duration;
-                                                stats.times.push(duration);
-                                                if !success || response.is_none() {
-                                                    stats.failures += 1;
-                                                }
-                                            }
+                        record_request(
+                            rt_metrics.as_ref(),
+                                                &request_name,
+                                                duration,
+                                                success && response.is_some(),
+                                            );
 
                                             if success && response.is_some() {
                                                 if let Some(Ok(Message::Text(text))) = response {
@@ -276,7 +334,10 @@ impl StateTranslator {
                                                                 &text, status, a,
                                                             )
                                                         {
-                                                            tracing::error!("[WS] Assertion Failed: {}", e);
+                                                            tracing::error!(
+                                                                "[WS] Assertion Failed: {}",
+                                                                e
+                                                            );
                                                         }
                                                     }
 
@@ -293,6 +354,7 @@ impl StateTranslator {
                                                                 &text, rules, session,
                                                             );
                                                         }
+                                                        #[cfg(feature = "xpath")]
                                                         if let Some(rules) = &d.extract_xpath {
                                                             ExtractionEngine::extract_xpath(
                                                                 &text, rules, session,
@@ -310,56 +372,77 @@ impl StateTranslator {
                                         }
                                     }
                                 }
-                                Some("grpc") => {
+                                Some(Protocol::Grpc) => {
+                                    #[cfg(feature = "grpc")]
+                                    {
                                     let method_name = d
                                         .method_name
                                         .as_deref()
                                         .unwrap_or("UnknownService/UnknownMethod");
 
-                                    let body = if let Some(ref bf) = d.body_file {
-                                        let body_path = MacroEvaluator::evaluate(bf, record);
-                                        tokio::fs::read_to_string(&body_path)
-                                            .await
-                                            .unwrap_or_default()
-                                    } else {
-                                        d.body
-                                            .as_ref()
-                                            .map(|b| Interpolator::interpolate(b, &variables))
-                                            .unwrap_or_default()
-                                    };
-                                    let final_body = MacroEvaluator::evaluate(&body, record);
+                                    let final_body = eval_macros!(
+                                        resolve_body(
+                                            d.body.as_deref(),
+                                            d.body_file.as_deref(),
+                                            &variables,
+                                            record,
+                                        )
+                                        .await
+                                    );
 
-                                    tracing::debug!("[GRPC] Calling {} at {}", method_name, full_url);
+                                    tracing::debug!(
+                                        "[GRPC] Calling {} at {}",
+                                        method_name,
+                                        full_url
+                                    );
                                     let start = std::time::Instant::now();
 
                                     // Dynamic gRPC call via reflection
                                     let host_key = if full_url.starts_with("http") {
                                         full_url.clone()
                                     } else {
-                                        format!("http://{}", full_url)
+                                        format!("http://{full_url}")
                                     };
 
-                                    if let Some(client) = grpc_cls.get(&host_key) {
+                                    if let Some(client) = _grpc_cls.get(&host_key) {
                                         match client.find_method(method_name) {
                                             Ok(method_desc) => {
                                                 // Create a channel for this call
-                                                if let Ok(channel) = tonic::transport::Channel::from_shared(host_key).unwrap().connect().await {
-                                                    match d.grpc_mode.as_deref() {
-                                                        Some("server-streaming" | "server") => {
-                                                            match client.call_server_streaming(channel, method_desc, &final_body).await {
+                                                if let Ok(channel) =
+                                                    tonic::transport::Channel::from_shared(host_key)
+                                                        .unwrap()
+                                                        .connect()
+                                                        .await
+                                                {
+                                                    match d.grpc_mode {
+                                                        Some(GrpcMode::ServerStreaming) => {
+                                                            match client
+                                                                .call_server_streaming(
+                                                                    channel,
+                                                                    method_desc,
+                                                                    &final_body,
+                                                                )
+                                                                .await
+                                                            {
                                                                 Ok(mut stream) => {
-                                                                    while let Some(res_json_result) = stream.next().await {
-                                                                        if let Ok(res_json) = res_json_result {
-                                                                            let duration = start.elapsed().as_millis() as usize;
-                                                                            if let Some(ref rtm) = rt_metrics {
-                                                                                let mut lock = rtm.lock().unwrap();
-                                                                                let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                                                stats.count += 1;
-                                                                                stats.total_time_ms += duration;
-                                                                                stats.times.push(duration);
-                                                                            }
-                                                                            tracing::info!("[GRPC-STREAM] {} message: {}", request_name, res_json);
-                                                                            
+                                                                    while let Some(
+                                                                        res_json_result,
+                                                                    ) = stream.next().await
+                                                                    {
+                                                                        if let Ok(res_json) =
+                                                                            res_json_result
+                                                                        {
+                                                                             let duration = start
+                                                                                .elapsed()
+                                                                                .as_millis()
+                                                                                as usize;
+                                                                            record_request(rt_metrics.as_ref(), &request_name, duration, true);
+                                                                            tracing::info!(
+                                                                                "[GRPC-STREAM] {} message: {}",
+                                                                                request_name,
+                                                                                res_json
+                                                                            );
+
                                                                             if let Some(session) = user.get_session_data_mut::<UserSession>() {
                                                                                 let status = 200;
                                                                                 for a in &d.assert {
@@ -375,32 +458,49 @@ impl StateTranslator {
                                                                     }
                                                                 }
                                                                 Err(e) => {
-                                                                    tracing::error!("[GRPC] Stream failed: {}", e);
+                                                                    tracing::error!(
+                                                                        "[GRPC] Stream failed: {}",
+                                                                        e
+                                                                    );
                                                                 }
                                                             }
                                                         }
-                                                        Some("client-streaming" | "client") => {
+                                                        Some(GrpcMode::ClientStreaming) => {
                                                             let mut payloads = Vec::new();
                                                             if d.messages.is_empty() {
                                                                 payloads.push(final_body);
                                                             } else {
                                                                 for m in &d.messages {
-                                                                    let final_m = Interpolator::interpolate(m, &variables);
-                                                                    payloads.push(MacroEvaluator::evaluate(&final_m, record));
+                                                                    let final_m =
+                                                                        Interpolator::interpolate(
+                                                                            m, &variables,
+                                                                        );
+                                                                    payloads.push(eval_macros!(
+                                                                        MacroEvaluator::evaluate(
+                                                                            &final_m, record
+                                                                        )
+                                                                    ));
                                                                 }
                                                             }
-                                                            match client.call_client_streaming(channel, method_desc, payloads).await {
-                                                                Ok(res_json) => {
-                                                                    let duration = start.elapsed().as_millis() as usize;
-                                                                    if let Some(ref rtm) = rt_metrics {
-                                                                        let mut lock = rtm.lock().unwrap();
-                                                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                                        stats.count += 1;
-                                                                        stats.total_time_ms += duration;
-                                                                        stats.times.push(duration);
-                                                                    }
-                                                                    tracing::info!("[GRPC-CLIENT] {} success: {}", request_name, res_json);
-                                                                    
+                                                            match client
+                                                                .call_client_streaming(
+                                                                    channel,
+                                                                    method_desc,
+                                                                    payloads,
+                                                                )
+                                                                .await
+                                                            {
+                                                                 Ok(res_json) => {
+                                                                    let duration =
+                                                                        start.elapsed().as_millis()
+                                                                            as usize;
+                                                                    record_request(rt_metrics.as_ref(), &request_name, duration, true);
+                                                                    tracing::info!(
+                                                                        "[GRPC-CLIENT] {} success: {}",
+                                                                        request_name,
+                                                                        res_json
+                                                                    );
+
                                                                     if let Some(session) = user.get_session_data_mut::<UserSession>() {
                                                                         let status = 200;
                                                                         for a in &d.assert {
@@ -414,34 +514,57 @@ impl StateTranslator {
                                                                     }
                                                                 }
                                                                 Err(e) => {
-                                                                    tracing::error!("[GRPC] Client stream failed: {}", e);
+                                                                    tracing::error!(
+                                                                        "[GRPC] Client stream failed: {}",
+                                                                        e
+                                                                    );
                                                                 }
                                                             }
                                                         }
-                                                        Some("bidi-streaming" | "bidi") => {
+                                                        Some(GrpcMode::BidiStreaming) => {
                                                             let mut payloads = Vec::new();
                                                             if d.messages.is_empty() {
                                                                 payloads.push(final_body);
                                                             } else {
                                                                 for m in &d.messages {
-                                                                    let final_m = Interpolator::interpolate(m, &variables);
-                                                                    payloads.push(MacroEvaluator::evaluate(&final_m, record));
+                                                                    let final_m =
+                                                                        Interpolator::interpolate(
+                                                                            m, &variables,
+                                                                        );
+                                                                    payloads.push(eval_macros!(
+                                                                        MacroEvaluator::evaluate(
+                                                                            &final_m, record
+                                                                        )
+                                                                    ));
                                                                 }
                                                             }
-                                                            match client.call_bidi_streaming(channel, method_desc, payloads).await {
+                                                            match client
+                                                                .call_bidi_streaming(
+                                                                    channel,
+                                                                    method_desc,
+                                                                    payloads,
+                                                                )
+                                                                .await
+                                                            {
                                                                 Ok(mut stream) => {
-                                                                    while let Some(res_json_result) = stream.next().await {
-                                                                        if let Ok(res_json) = res_json_result {
-                                                                            let duration = start.elapsed().as_millis() as usize;
-                                                                            if let Some(ref rtm) = rt_metrics {
-                                                                                let mut lock = rtm.lock().unwrap();
-                                                                                let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                                                stats.count += 1;
-                                                                                stats.total_time_ms += duration;
-                                                                                stats.times.push(duration);
-                                                                            }
-                                                                            tracing::info!("[GRPC-BIDI] {} message: {}", request_name, res_json);
-                                                                            
+                                                                    while let Some(
+                                                                        res_json_result,
+                                                                    ) = stream.next().await
+                                                                    {
+                                                                        if let Ok(res_json) =
+                                                                            res_json_result
+                                                                        {
+                                                                             let duration = start
+                                                                                .elapsed()
+                                                                                .as_millis()
+                                                                                as usize;
+                                                                            record_request(rt_metrics.as_ref(), &request_name, duration, true);
+                                                                            tracing::info!(
+                                                                                "[GRPC-BIDI] {} message: {}",
+                                                                                request_name,
+                                                                                res_json
+                                                                            );
+
                                                                             if let Some(session) = user.get_session_data_mut::<UserSession>() {
                                                                                 let status = 200;
                                                                                 for a in &d.assert {
@@ -457,24 +580,34 @@ impl StateTranslator {
                                                                     }
                                                                 }
                                                                 Err(e) => {
-                                                                    tracing::error!("[GRPC] Bidi stream failed: {}", e);
+                                                                    tracing::error!(
+                                                                        "[GRPC] Bidi stream failed: {}",
+                                                                        e
+                                                                    );
                                                                 }
                                                             }
                                                         }
                                                         _ => {
                                                             // Default: unary
-                                                            match client.call_unary(channel, method_desc, &final_body).await {
-                                                                Ok(res_json) => {
-                                                                    let duration = start.elapsed().as_millis() as usize;
-                                                                    if let Some(ref rtm) = rt_metrics {
-                                                                        let mut lock = rtm.lock().unwrap();
-                                                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                                        stats.count += 1;
-                                                                        stats.total_time_ms += duration;
-                                                                        stats.times.push(duration);
-                                                                    }
-                                                                    tracing::info!("[GRPC] {} success: {}", request_name, res_json);
-                                                                    
+                                                            match client
+                                                                .call_unary(
+                                                                    channel,
+                                                                    method_desc,
+                                                                    &final_body,
+                                                                )
+                                                                .await
+                                                            {
+                                                                 Ok(res_json) => {
+                                                                    let duration =
+                                                                        start.elapsed().as_millis()
+                                                                            as usize;
+                                                                    record_request(rt_metrics.as_ref(), &request_name, duration, true);
+                                                                    tracing::info!(
+                                                                        "[GRPC] {} success: {}",
+                                                                        request_name,
+                                                                        res_json
+                                                                    );
+
                                                                     if let Some(session) = user.get_session_data_mut::<UserSession>() {
                                                                         let status = 200;
                                                                         for a in &d.assert {
@@ -488,16 +621,14 @@ impl StateTranslator {
                                                                     }
                                                                 }
                                                                 Err(e) => {
-                                                                    let duration = start.elapsed().as_millis() as usize;
-                                                                    if let Some(ref rtm) = rt_metrics {
-                                                                        let mut lock = rtm.lock().unwrap();
-                                                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                                        stats.count += 1;
-                                                                        stats.failures += 1;
-                                                                        stats.total_time_ms += duration;
-                                                                        stats.times.push(duration);
-                                                                    }
-                                                                    tracing::error!("[GRPC] Call failed: {}", e);
+                                                                     let duration =
+                                                                        start.elapsed().as_millis()
+                                                                            as usize;
+                                                                    record_request(rt_metrics.as_ref(), &request_name, duration, false);
+                                                                    tracing::error!(
+                                                                        "[GRPC] Call failed: {}",
+                                                                        e
+                                                                    );
                                                                 }
                                                             }
                                                         }
@@ -505,11 +636,17 @@ impl StateTranslator {
                                                 }
                                             }
                                             Err(e) => {
-                                                tracing::error!("[GRPC] Method discovery failed: {}", e);
+                                                tracing::error!(
+                                                    "[GRPC] Method discovery failed: {}",
+                                                    e
+                                                );
                                             }
                                         }
                                     } else {
-                                        tracing::warn!("[GRPC] No reflection client found for {}. Fallback to static call.", host_key);
+                                        tracing::warn!(
+                                            "[GRPC] No reflection client found for {}. Fallback to static call.",
+                                            host_key
+                                        );
                                         // Fallback to the previous "static" implementation for the internal mock
                                         use crate::engine::proto::bzt_mock;
                                         if let Ok(mut client) = bzt_mock::mock_service_client::MockServiceClient::connect(full_url.clone()).await {
@@ -521,65 +658,46 @@ impl StateTranslator {
                                             match client.call(req).await {
                                                 Ok(response) => {
                                                     let duration = start.elapsed().as_millis() as usize;
-                                                    if let Some(ref rtm) = rt_metrics {
-                                                        let mut lock = rtm.lock().unwrap();
-                                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                        stats.count += 1;
-                                                        stats.total_time_ms += duration;
-                                                        stats.times.push(duration);
-                                                    }
+                                                    record_request(rt_metrics.as_ref(), &request_name, duration, true);
                                                     let res = response.into_inner();
                                                     tracing::info!("[GRPC-STATIC] {} success: {}", request_name, res.message);
                                                 }
                                                 Err(e) => {
                                                     let duration = start.elapsed().as_millis() as usize;
-                                                    if let Some(ref rtm) = rt_metrics {
-                                                        let mut lock = rtm.lock().unwrap();
-                                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                                        stats.count += 1;
-                                                        stats.failures += 1;
-                                                        stats.total_time_ms += duration;
-                                                        stats.times.push(duration);
-                                                    }
+                                                    record_request(rt_metrics.as_ref(), &request_name, duration, false);
                                                     tracing::error!("[GRPC-STATIC] {} failed: {}", request_name, e);
                                                 }
                                             }
                                         }
                                     }
+                                    }
+                                    #[cfg(not(feature = "grpc"))]
+                                    {
+                                        tracing::warn!("[GRPC] gRPC support not compiled in. Enable the 'grpc' feature.");
+                                    }
                                 }
                                 _ => {
                                     let method =
-                                        d.method.clone().unwrap_or_else(|| "GET".to_string());
+                                        d.method.clone().unwrap_or(HttpMethod::Get);
 
                                     // Body: prefer body_file if set, fall back to inline body
-                                    let body = if let Some(ref bf) = d.body_file {
-                                        let body_path = MacroEvaluator::evaluate(bf, record);
-                                        match tokio::fs::read_to_string(&body_path).await {
-                                            Ok(content) => content,
-                                            Err(e) => {
-                                                tracing::warn!(
-                                                    "[BODY_FILE] Failed to read body file '{}': {}",
-                                                    body_path,
-                                                    e
-                                                );
-                                                String::new()
-                                            }
-                                        }
-                                    } else {
-                                        d.body
-                                            .as_ref()
-                                            .map(|b| Interpolator::interpolate(b, &variables))
-                                            .unwrap_or_default()
-                                    };
-                                    let final_body = MacroEvaluator::evaluate(&body, record);
+                                    let final_body = eval_macros!(
+                                        resolve_body(
+                                            d.body.as_deref(),
+                                            d.body_file.as_deref(),
+                                            &variables,
+                                            record,
+                                        )
+                                        .await
+                                    );
 
-                                    let method_enum = match method.as_str() {
-                                        "POST" => GooseMethod::Post,
-                                        "PUT" => GooseMethod::Put,
-                                        "DELETE" => GooseMethod::Delete,
-                                        "PATCH" => GooseMethod::Patch,
-                                        "HEAD" => GooseMethod::Head,
-                                        _ => GooseMethod::Get,
+                                    let method_enum = match method {
+                                        HttpMethod::Post => GooseMethod::Post,
+                                        HttpMethod::Put => GooseMethod::Put,
+                                        HttpMethod::Delete => GooseMethod::Delete,
+                                        HttpMethod::Patch => GooseMethod::Patch,
+                                        HttpMethod::Head => GooseMethod::Head,
+                                        HttpMethod::Get => GooseMethod::Get,
                                     };
 
                                     tracing::debug!(
@@ -587,7 +705,7 @@ impl StateTranslator {
                                         request_name,
                                         d.timeout,
                                         d.body_file.as_deref().unwrap_or("none"),
-                                        d.headers.as_ref().map_or(0, |h| h.len())
+                                        d.headers.as_ref().map_or(0, HashMap::len)
                                     );
 
                                     let mut reqwest_builder = match method_enum {
@@ -596,11 +714,11 @@ impl StateTranslator {
                                         GooseMethod::Delete => user.client.delete(&full_url),
                                         GooseMethod::Patch => user.client.patch(&full_url),
                                         GooseMethod::Head => user.client.head(&full_url),
-                                        _ => user.client.get(&full_url),
+                                        GooseMethod::Get => user.client.get(&full_url),
                                     };
 
                                     // Apply scenario-level + per-request headers
-                                    if let Some(ref sh) = scenario_headers {
+                                    if let Some(ref sh) = *scenario_headers {
                                         for (k, v) in sh {
                                             reqwest_builder =
                                                 reqwest_builder.header(k.as_str(), v.as_str());
@@ -617,8 +735,8 @@ impl StateTranslator {
                                     if let Some(ref timeout_str) = d.timeout {
                                         let ms = parse_time_to_ms(timeout_str);
                                         if ms > 0 {
-                                            reqwest_builder = reqwest_builder
-                                                .timeout(Duration::from_millis(ms));
+                                            reqwest_builder =
+                                                reqwest_builder.timeout(Duration::from_millis(ms));
                                         }
                                     }
 
@@ -639,31 +757,27 @@ impl StateTranslator {
                                     let duration = start.elapsed().as_millis() as usize;
 
                                     // Update real-time metrics
-                                    if let Some(ref rtm) = rt_metrics {
-                                        let mut lock = rtm.lock().unwrap();
-                                        let stats = lock.endpoints.entry(request_name.clone()).or_default();
-                                        stats.count += 1;
-                                        stats.total_time_ms += duration;
-                                        stats.times.push(duration);
-                                        if goose_response.response.is_err() {
-                                            stats.failures += 1;
-                                        }
-                                    }
+                                    record_request(
+                                        rt_metrics.as_ref(),
+                                        &request_name,
+                                        duration,
+                                        goose_response.response.is_ok(),
+                                    );
 
-                                    if let Ok(response) = &goose_response.response {
-
-                                        let status = response.status().as_u16();
-                                        let text = goose_response
-                                            .response
-                                            .unwrap()
-                                            .text()
-                                            .await
-                                            .unwrap_or_default();
+                                    {
+                                        let (status, text) = match goose_response.response {
+                                            Ok(resp) => {
+                                                let s = resp.status().as_u16();
+                                                let t = resp.text().await.unwrap_or_default();
+                                                (s, t)
+                                            }
+                                            Err(_) => (0, String::new()),
+                                        };
 
                                         for a in &d.assert {
-                                            if let Err(e) = AssertionEngine::check_assertion(
-                                                &text, status, a,
-                                            ) {
+                                            if let Err(e) =
+                                                AssertionEngine::check_assertion(&text, status, a)
+                                            {
                                                 let mut req = goose_response.request.clone();
                                                 let err_msg = e.to_string();
                                                 let _ = user.set_failure(
@@ -688,6 +802,7 @@ impl StateTranslator {
                                                     &text, rules, session,
                                                 );
                                             }
+                                            #[cfg(feature = "xpath")]
                                             if let Some(rules) = &d.extract_xpath {
                                                 ExtractionEngine::extract_xpath(
                                                     &text, rules, session,
@@ -699,24 +814,27 @@ impl StateTranslator {
                             }
 
                             // Unified variable synchronization for loop condition
-                                if d.loop_while.is_some() {
-                                    let session_opt = user.get_session_data::<UserSession>();
-                                    if let Some(session) = session_opt {
-                                        variables = session.variables.clone();
-                                        tracing::trace!("[SESSION] {} variables updated for loop", variables.len());
-                                    }
+                            if d.loop_while.is_some() {
+                                let session_opt = user.get_session_data::<UserSession>();
+                                if let Some(session) = session_opt {
+                                    variables = session.variables.clone();
+                                    tracing::trace!(
+                                        "[SESSION] {} variables updated for loop",
+                                        variables.len()
+                                    );
                                 }
-
-                                if d.loop_while.is_none() {
-                                    break;
-                                }
-                                loop_count += 1;
                             }
+
+                            if d.loop_while.is_none() {
+                                break;
+                            }
+                            loop_count += 1;
                         }
                     }
-                    Ok(())
-                })
-            }));
+                }
+                Ok(())
+            })
+        }));
 
         if let HTTPRequestDefinition::Detailed(d) = req
             && d.on_start
@@ -728,6 +846,8 @@ impl StateTranslator {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
 fn parse_hatch_rate(ramp_up: &str, concurrency: usize) -> String {
     let ms = parse_time_to_ms(ramp_up);
     let seconds = ms as f32 / 1000.0;
@@ -738,6 +858,7 @@ fn parse_hatch_rate(ramp_up: &str, concurrency: usize) -> String {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn parse_think_time(s: &str) -> (usize, usize) {
     if s.contains('-') {
         let parts: Vec<&str> = s.split('-').collect();
@@ -753,11 +874,10 @@ fn parse_think_time(s: &str) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::config::{DetailedRequest, ExecutionPlan, ScenarioDefinition};
+    use crate::models::config::{DetailedRequest, ExecutionPlan, Protocol, ScenarioDefinition};
 
     #[tokio::test]
-    async fn
- test_translate_basic() {
+    async fn test_translate_basic() {
         let mut scenarios = HashMap::new();
         scenarios.insert(
             "test".to_string(),
@@ -791,8 +911,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn
- test_translate_protocols() {
+    async fn test_translate_protocols() {
         let mut scenarios = HashMap::new();
         scenarios.insert(
             "proto".to_string(),
@@ -811,7 +930,7 @@ mod tests {
                         extract_jsonpath: None,
                         extract_regexp: None,
                         assert: vec![],
-                        protocol: Some("websocket".to_string()),
+                        protocol: Some(Protocol::Websocket),
                         message: Some("hello".to_string()),
                         method_name: None,
                         execute_if: None,
@@ -831,7 +950,7 @@ mod tests {
                         extract_jsonpath: None,
                         extract_regexp: None,
                         assert: vec![],
-                        protocol: Some("grpc".to_string()),
+                        protocol: Some(Protocol::Grpc),
                         message: None,
                         method_name: Some("SayHello".to_string()),
                         execute_if: None,

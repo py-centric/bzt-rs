@@ -1,17 +1,20 @@
-pub mod control_flow;
-pub mod data_sources;
-pub mod env;
-pub mod extraction;
-pub mod grpc_dynamic;
+pub(crate) mod control_flow;
+pub(crate) mod data_sources;
+pub(crate) mod env;
+pub(crate) mod extraction;
 pub mod goose;
-pub mod interpolation;
-pub mod macros;
+#[cfg(feature = "grpc")]
+pub(crate) mod grpc_dynamic;
+pub(crate) mod interpolation;
+pub(crate) mod macros;
+#[cfg(feature = "grpc")]
 pub mod mock;
-pub mod pacing;
-pub mod proto;
+pub(crate) mod pacing;
+#[cfg(feature = "grpc")]
+pub(crate) mod proto;
 pub mod reporting;
-pub mod sla;
-pub mod utils;
+pub(crate) mod sla;
+pub(crate) mod utils;
 pub mod validation;
 
 #[derive(Debug, thiserror::Error)]
@@ -21,7 +24,7 @@ pub enum BztError {
         source: std::io::Error,
         context: String,
     },
-    #[error("[SERDE] {message}{}", file_path.as_ref().map(|p| format!(" in '{}'", p)).unwrap_or_default())]
+    #[error("[SERDE] {message}{}", file_path.as_ref().map(|p| format!(" in '{p}'")).unwrap_or_default())]
     Serde {
         message: String,
         file_path: Option<String>,

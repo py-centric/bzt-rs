@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct AssertionEngine;
 
 impl AssertionEngine {
+    #[allow(clippy::missing_errors_doc)]
     pub fn check_assertion(
         body: &str,
         status: u16,
@@ -17,10 +18,12 @@ impl AssertionEngine {
         };
 
         for pattern in &assertion.contains {
+            // NOTE: `pattern` is dynamic per-assertion so cannot be cached in a
+            // static OnceLock.  The regex crate's internal DFA caches compiled
+            // patterns in a thread-local LRU, so repeated compilations of the
+            // same pattern string are cheap after the first call.
             let found = if assertion.regexp {
-                Regex::new(pattern)
-                    .map(|re| re.is_match(subject_val))
-                    .unwrap_or(false)
+                Regex::new(pattern).is_ok_and(|re| re.is_match(subject_val))
             } else {
                 subject_val.contains(pattern)
             };
@@ -87,7 +90,7 @@ impl ControlFlowEngine {
 
         // Handle basic comparisons
         if let Some((left, op, right)) = parse_comparison(cond) {
-            let left_val = variables.get(left).map(|s| s.as_str()).unwrap_or(left);
+            let left_val = variables.get(left).map_or(left, String::as_str);
             let right_val = right.trim_matches('"');
 
             match op {
@@ -166,8 +169,14 @@ mod tests {
     fn test_evaluate_condition_basic() {
         let mut vars = HashMap::new();
         vars.insert("status".to_string(), "200".to_string());
-        assert!(ControlFlowEngine::evaluate_condition("status == 200", &vars));
-        assert!(ControlFlowEngine::evaluate_condition("status != 404", &vars));
+        assert!(ControlFlowEngine::evaluate_condition(
+            "status == 200",
+            &vars
+        ));
+        assert!(ControlFlowEngine::evaluate_condition(
+            "status != 404",
+            &vars
+        ));
     }
 
     #[test]

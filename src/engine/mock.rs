@@ -1,19 +1,19 @@
 use crate::engine::BztError;
-use crate::models::config::{Configuration, DetailedRequest, HTTPRequestDefinition};
+use crate::models::config::{Configuration, DetailedRequest, HttpMethod, HTTPRequestDefinition, Protocol};
 use ax_ws::{Message, WebSocket};
 use axum::{
+    Router,
     extract::{Path, State, WebSocketUpgrade, ws as ax_ws},
     http::{Method, StatusCode},
     response::IntoResponse,
     routing::any,
-    Router,
 };
 use futures_util::SinkExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Server};
 
 use crate::engine::proto::bzt_mock;
 use bzt_mock::mock_service_server::{MockService, MockServiceServer};
@@ -97,12 +97,18 @@ impl MockService for MyMockService {
     ) -> Result<Response<Self::ServerStreamStream>, Status> {
         let req = request.into_inner();
         tracing::info!("[MOCK-GRPC] Received server stream for: {}", req.method);
-        
+
         let s = tokio_stream::iter(vec![
-            Ok(GrpcMockResponse { message: format!("Part 1 for {}", req.method), status: 0 }),
-            Ok(GrpcMockResponse { message: format!("Part 2 for {}", req.method), status: 0 }),
+            Ok(GrpcMockResponse {
+                message: format!("Part 1 for {}", req.method),
+                status: 0,
+            }),
+            Ok(GrpcMockResponse {
+                message: format!("Part 2 for {}", req.method),
+                status: 0,
+            }),
         ]);
-        
+
         Ok(Response::new(Box::pin(s)))
     }
 
@@ -117,9 +123,9 @@ impl MockService for MyMockService {
             count += 1;
         }
         tracing::info!("[MOCK-GRPC] Received client stream with {} messages", count);
-        
+
         Ok(Response::new(GrpcMockResponse {
-            message: format!("Received {} messages", count),
+            message: format!("Received {count} messages"),
             status: 0,
         }))
     }
@@ -155,15 +161,14 @@ async fn handle_ws_upgrade(
     } else {
         format!("/{path}")
     };
-    let ws_path = format!("/ws{}", path);
+    let ws_path = format!("/ws{path}");
 
     for scenario in config.scenarios.values() {
         for req_def in &scenario.requests {
             if let HTTPRequestDefinition::Detailed(d) = req_def {
                 let is_ws = (d.url == path || d.url == ws_path)
-                    && d.protocol.as_deref().is_some_and(|p| p == "websocket" || p == "ws");
-                if is_ws
-                {
+                    && matches!(d.protocol, Some(Protocol::Websocket) | Some(Protocol::Ws));
+                if is_ws {
                     let mock_res = generate_mock_response(d);
                     tracing::info!("[MOCK-WS] Upgrading: {}", d.url);
                     return ws.on_upgrade(move |socket| handle_socket(socket, mock_res.body));
@@ -197,12 +202,14 @@ async fn handle_mock_request(
                     }
                 }
                 HTTPRequestDefinition::Detailed(d) => {
-                    let req_method = d
-                        .method
-                        .as_deref()
-                        .unwrap_or("GET")
-                        .parse::<Method>()
-                        .unwrap_or(Method::GET);
+                    let req_method = match d.method.as_ref().unwrap_or(&HttpMethod::Get) {
+                        HttpMethod::Get => Method::GET,
+                        HttpMethod::Post => Method::POST,
+                        HttpMethod::Put => Method::PUT,
+                        HttpMethod::Delete => Method::DELETE,
+                        HttpMethod::Patch => Method::PATCH,
+                        HttpMethod::Head => Method::HEAD,
+                    };
                     if d.url == path && method == req_method {
                         let mock_res = generate_mock_response(d);
                         return (
@@ -220,11 +227,13 @@ async fn handle_mock_request(
     StatusCode::NOT_FOUND.into_response()
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub struct MockServerAddresses {
     pub http_addr: SocketAddr,
     pub grpc_addr: SocketAddr,
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddresses, BztError> {
     let shared_config = Arc::new(config);
     let app = Router::new()
@@ -249,7 +258,7 @@ pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddres
     let grpc_listener = tokio::net::TcpListener::bind(grpc_addr).await?;
     let local_grpc_addr = grpc_listener.local_addr()?;
 
-    println!("gRPC Mock server started at {}", local_grpc_addr);
+    println!("gRPC Mock server started at {local_grpc_addr}");
 
     let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(bzt_mock::FILE_DESCRIPTOR_SET)
@@ -260,7 +269,9 @@ pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddres
         if let Err(e) = Server::builder()
             .add_service(MockServiceServer::new(MyMockService))
             .add_service(reflection_service)
-            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(grpc_listener))
+            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(
+                grpc_listener,
+            ))
             .await
         {
             tracing::error!("Mock gRPC server error: {}", e);
@@ -294,5 +305,125 @@ mod tests {
         let response = generate_mock_response(&req);
         assert_eq!(response.status, 200);
         assert_eq!(response.body, "Success token: 123");
+    }
+
+    #[test]
+    fn test_mock_response_default_values() {
+        let resp = MockResponse::default();
+        assert_eq!(resp.status, 200);
+        assert!(resp.body.is_empty());
+        assert_eq!(resp.headers.get("Content-Type").unwrap(), "text/plain");
+    }
+
+    #[test]
+    fn test_generate_mock_response_no_assertions() {
+        let req = DetailedRequest {
+            url: "/api/empty".to_string(),
+            assert: vec![],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.status, 200);
+        assert!(response.body.is_empty());
+    }
+
+    #[test]
+    fn test_generate_mock_response_not_assertion_ignored() {
+        let req = DetailedRequest {
+            url: "/api/test".to_string(),
+            assert: vec![AssertionDefinition {
+                contains: vec!["excluded content".to_string()],
+                subject: "body".to_string(),
+                regexp: false,
+                not: true, // negated — should NOT map to body
+            }],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.status, 200);
+        assert!(response.body.is_empty(), "not-assertion should not contribute to body");
+    }
+
+    #[test]
+    fn test_generate_mock_response_non_body_subject_ignored() {
+        let req = DetailedRequest {
+            url: "/api/test".to_string(),
+            assert: vec![AssertionDefinition {
+                contains: vec!["200".to_string()],
+                subject: "http-code".to_string(),
+                regexp: false,
+                not: false,
+            }],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.status, 200);
+        assert!(response.body.is_empty(), "non-body subject should not contribute to body");
+    }
+
+    #[test]
+    fn test_generate_mock_response_single_body_assertion() {
+        let req = DetailedRequest {
+            url: "/api/test".to_string(),
+            assert: vec![AssertionDefinition {
+                contains: vec!["only one".to_string()],
+                subject: "body".to_string(),
+                regexp: false,
+                not: false,
+            }],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.body, "only one");
+    }
+
+    #[test]
+    fn test_generate_mock_response_mixed_assertions() {
+        let req = DetailedRequest {
+            url: "/api/test".to_string(),
+            assert: vec![
+                AssertionDefinition {
+                    contains: vec!["body-content".to_string()],
+                    subject: "body".to_string(),
+                    regexp: false,
+                    not: false,
+                },
+                AssertionDefinition {
+                    contains: vec!["200".to_string()],
+                    subject: "http-code".to_string(),
+                    regexp: false,
+                    not: false,
+                },
+                AssertionDefinition {
+                    contains: vec!["should-not-appear".to_string()],
+                    subject: "body".to_string(),
+                    regexp: false,
+                    not: true,
+                },
+            ],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.body, "body-content");
+    }
+
+    #[test]
+    fn test_mock_response_body_with_newlines() {
+        let req = DetailedRequest {
+            url: "/api/multi".to_string(),
+            assert: vec![AssertionDefinition {
+                contains: vec![
+                    "line1".to_string(),
+                    "line2".to_string(),
+                    "line3".to_string(),
+                ],
+                subject: "body".to_string(),
+                regexp: false,
+                not: false,
+            }],
+            ..Default::default()
+        };
+        let response = generate_mock_response(&req);
+        assert_eq!(response.body, "line1 line2 line3");
     }
 }
