@@ -60,6 +60,7 @@ impl ValidationSummary {
     }
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub async fn validate_config(config: &Configuration) -> ValidationSummary {
     let mut summary = ValidationSummary {
         syntax_valid: true, // If we have the config object, it's syntactically valid
@@ -99,6 +100,7 @@ pub async fn validate_config(config: &Configuration) -> ValidationSummary {
 /// Scans configuration for `${env.VAR}` references and warns about
 /// variables that match sensitive patterns.
 #[must_use]
+#[allow(clippy::missing_panics_doc)]
 pub fn validate_env_refs(config: &Configuration) -> Vec<String> {
     let mut warnings = Vec::new();
     let re = Regex::new(r"\$\{env\.([A-Za-z0-9_]+)\}").unwrap();
@@ -124,8 +126,7 @@ pub fn validate_env_refs(config: &Configuration) -> Vec<String> {
                 let var_name = &cap[1];
                 if is_sensitive_var(var_name) {
                     warnings.push(format!(
-                        "Scenario '{}', request {}: env var '${{env.{}}}' matches sensitive patterns",
-                        scenario_name, idx, var_name
+                        "Scenario '{scenario_name}', request {idx}: env var '${{env.{var_name}}}' matches sensitive patterns",
                     ));
                 }
             }
@@ -151,10 +152,10 @@ pub fn validate_files(files: &[&DataSourceDefinition]) -> HashMap<String, FileSt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::config::{
-        Configuration, DataSourceDefinition, DetailedRequest, HTTPRequestDefinition,
-        ScenarioDefinition,
-    };
+use crate::models::config::{
+    Configuration, DataSourceDefinition, DetailedRequest, HttpMethod, HTTPRequestDefinition,
+    ScenarioDefinition,
+};
     use std::collections::HashMap;
     use std::fs::File;
     use tempfile::tempdir;
@@ -225,7 +226,7 @@ mod tests {
             ScenarioDefinition {
                 requests: vec![HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                     url: "https://api.example.com/data".to_string(),
-                    method: Some("POST".to_string()),
+                    method: Some(HttpMethod::Post),
                     headers: None,
                     body: Some("{\"token\": \"${env.SECRET_TOKEN}\"}".to_string()),
                     label: None,

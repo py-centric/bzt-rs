@@ -1,13 +1,17 @@
 use crate::engine::BztError;
+use crate::engine::macros::is_sensitive_var;
+use crate::engine::macros::mask_env_value;
 use std::collections::HashMap;
 
 pub struct EnvironmentLoader;
 
 impl EnvironmentLoader {
+    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn resolve(
         input: &str,
         variables: &HashMap<String, String>,
-        blocklist: &[&str],
+        _blocklist: &[&str],
     ) -> Result<String, BztError> {
         tracing::debug!("[ENV] Resolving env vars in: '{}'", input);
         let mut output = input.to_string();
@@ -15,12 +19,10 @@ impl EnvironmentLoader {
 
         for cap in re.captures_iter(input) {
             let var_name = &cap[1];
-            if blocklist.iter().any(|p| var_name.contains(p)) {
-                tracing::debug!(
-                    "[ENV] Blocked sensitive var '{}' from resolving in '{}'",
-                    var_name,
-                    input
-                );
+            // Security: use unified is_sensitive_var() for precise pattern matching
+            // instead of substring .contains() which over-blocks (e.g., KEYBOARD, TOKENIZER)
+            if is_sensitive_var(var_name) {
+                tracing::debug!("[ENV] Blocked sensitive var '{}' from resolving", var_name,);
                 return Err(BztError::Environment {
                     var: var_name.to_string(),
                     reason: "access to sensitive environment variable is blocked".to_string(),
@@ -31,11 +33,12 @@ impl EnvironmentLoader {
                 .cloned()
                 .or_else(|| std::env::var(var_name).ok())
                 .unwrap_or_default();
-            tracing::debug!("[ENV] Resolved '${{env.{}}}' -> '{}'", var_name, val);
+            // Security: mask sensitive values in debug output to prevent credential leakage
+            let masked = mask_env_value(var_name, &val);
+            tracing::debug!("[ENV] Resolved '${{env.{}}}' -> '{}'", var_name, masked);
             output = output.replace(&cap[0], &val);
         }
 
-        tracing::debug!("[ENV] Resolved output: '{}'", output);
         Ok(output)
     }
 }
