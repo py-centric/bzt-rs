@@ -2,8 +2,8 @@ mod common;
 
 use bzt_rs::engine::goose;
 use bzt_rs::models::config::{
-    AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HTTPRequestDefinition,
-    ScenarioDefinition,
+    AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HttpMethod,
+    HTTPRequestDefinition, ScenarioDefinition,
 };
 use ntest::timeout;
 use std::collections::HashMap;
@@ -23,7 +23,7 @@ async fn test_state_integration() {
             requests: vec![
                 HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                     url: format!("http://{}/user/123", addr),
-                    method: Some("GET".to_string()),
+                    method: Some(HttpMethod::Get),
                     headers: None,
                     body: None,
                     label: None,
@@ -48,7 +48,7 @@ async fn test_state_integration() {
                 })),
                 HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                     url: format!("http://{}/user/${{testVar}}", addr),
-                    method: Some("GET".to_string()),
+                    method: Some(HttpMethod::Get),
                     headers: None,
                     body: None,
                     label: None,
@@ -85,7 +85,9 @@ async fn test_state_integration() {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![], services: vec![], api: None,
+        reporting: vec![],
+        services: vec![],
+        api: None,
     };
 
     let result = goose::run_attack(config).await;

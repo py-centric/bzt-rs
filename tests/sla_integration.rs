@@ -2,8 +2,9 @@ mod common;
 
 use bzt_rs::engine::goose;
 use bzt_rs::models::config::{
-    AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HTTPRequestDefinition,
-    ReportingDefinition, ScenarioDefinition, SlaAction, SlaCriterion, SlaMetric,
+    AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HttpMethod,
+    HTTPRequestDefinition, ReportingDefinition, ScenarioDefinition, SlaAction, SlaCriterion,
+    SlaMetric,
 };
 use ntest::timeout;
 use std::collections::HashMap;
@@ -19,7 +20,7 @@ async fn test_sla_and_pacing_integration() {
         ScenarioDefinition {
             requests: vec![HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                 url: format!("http://{}/", addr),
-                method: Some("GET".to_string()),
+                method: Some(HttpMethod::Get),
                 headers: None,
                 body: None,
                 label: None,
@@ -41,7 +42,7 @@ async fn test_sla_and_pacing_integration() {
                 execute_if: None,
                 loop_while: None,
                 ..Default::default()
-                }))],
+            }))],
 
             weight: 1,
             think_time: None,

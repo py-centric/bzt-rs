@@ -1,3 +1,5 @@
+#![cfg(feature = "grpc")]
+
 use bzt_rs::engine;
 use bzt_rs::engine::BztError;
 use bzt_rs::models::config::{
@@ -36,7 +38,9 @@ async fn test_grpc_integration() -> Result<(), BztError> {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![], services: vec![], api: None,
+        reporting: vec![],
+        services: vec![],
+        api: None,
     };
 
     // Start mock server
@@ -44,7 +48,8 @@ async fn test_grpc_integration() -> Result<(), BztError> {
     let host_override = format!("http://{}", addrs.grpc_addr);
 
     // Run attack
-    let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
+    let attack =
+        bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
     let stats = attack
         .execute()
         .await

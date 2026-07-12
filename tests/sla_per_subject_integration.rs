@@ -1,8 +1,10 @@
+#![cfg(feature = "grpc")]
+
 use bzt_rs::engine;
 use bzt_rs::engine::BztError;
 use bzt_rs::models::config::{
-    Configuration, ExecutionPlan, HTTPRequestDefinition, ReportingDefinition,
-    ScenarioDefinition, SlaAction, SlaCriterion, SlaMetric,
+    Configuration, ExecutionPlan, HTTPRequestDefinition, ReportingDefinition, ScenarioDefinition,
+    SlaAction, SlaCriterion, SlaMetric,
 };
 use std::collections::HashMap;
 
@@ -69,7 +71,8 @@ async fn test_sla_per_subject_integration() -> Result<(), BztError> {
     let host_override = format!("http://{}", addrs.http_addr);
 
     // Run attack
-    let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
+    let attack =
+        bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
     let stats = attack
         .execute()
         .await
@@ -77,10 +80,10 @@ async fn test_sla_per_subject_integration() -> Result<(), BztError> {
 
     // Evaluate SLAs manually to verify the engine logic
     let results = engine::sla::SlaEngine::evaluate(&config.reporting[0].sla, &stats);
-    
+
     // Both should pass as mock returns instantly
     assert!(results[0].passed, "Fast request SLA should pass");
     assert!(results[1].passed, "Slow request SLA should pass");
-    
+
     Ok(())
 }

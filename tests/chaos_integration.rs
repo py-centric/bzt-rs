@@ -2,8 +2,9 @@ mod common;
 
 use bzt_rs::engine::goose;
 use bzt_rs::models::config::{
-    Configuration, ExecutionPlan, HTTPRequestDefinition, ScenarioDefinition,
-    ServiceDefinition, ApiConfig, SlaCriterion, SlaMetric, SlaAction, DetailedRequest
+    ApiConfig, Configuration, DetailedRequest, ExecutionPlan, HttpMethod,
+    HTTPRequestDefinition, ScenarioDefinition, ServiceDefinition, SlaAction, SlaCriterion,
+    SlaMetric,
 };
 use ntest::timeout;
 use std::collections::HashMap;
@@ -14,7 +15,10 @@ use std::time::Duration;
 async fn send_get(addr: &str, path: &str) -> String {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
-    let req = format!("GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n", path, addr);
+    let req = format!(
+        "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+        path, addr
+    );
     stream.write_all(req.as_bytes()).await.unwrap();
     let mut resp = String::new();
     stream.read_to_string(&mut resp).await.unwrap();
@@ -24,7 +28,10 @@ async fn send_get(addr: &str, path: &str) -> String {
 async fn send_post(addr: &str, path: &str) -> String {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
-    let req = format!("POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", path, addr);
+    let req = format!(
+        "POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
+        path, addr
+    );
     stream.write_all(req.as_bytes()).await.unwrap();
     let mut resp = String::new();
     stream.read_to_string(&mut resp).await.unwrap();
@@ -42,7 +49,7 @@ async fn test_chaos_hooks_and_api() {
         ScenarioDefinition {
             requests: vec![HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                 url: format!("http://{}/", addr),
-                method: Some("GET".to_string()),
+                method: Some(HttpMethod::Get),
                 ..Default::default()
             }))],
             weight: 1,
@@ -87,27 +94,23 @@ async fn test_chaos_hooks_and_api() {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![
-            bzt_rs::models::config::ReportingDefinition {
-                module: "dummy".to_string(), // sets up real-time metrics without connecting to InfluxDB
-                filename: None,
-                url: None,
-                token: None,
-                org: None,
-                bucket: None,
-                interval: Some("1s".to_string()),
-                failed_threshold: None,
-                sla: vec![
-                    SlaCriterion {
-                        metric: SlaMetric::AvgResponseTime,
-                        threshold: 0.001, // extremely low, guaranteed to breach
-                        subject: None,
-                        duration: None,
-                        action: SlaAction::Exec(format!("echo 'sla_breached' > {}", sla_file)),
-                    }
-                ],
-            }
-        ],
+        reporting: vec![bzt_rs::models::config::ReportingDefinition {
+            module: "dummy".to_string(), // sets up real-time metrics without connecting to InfluxDB
+            filename: None,
+            url: None,
+            token: None,
+            org: None,
+            bucket: None,
+            interval: Some("1s".to_string()),
+            failed_threshold: None,
+            sla: vec![SlaCriterion {
+                metric: SlaMetric::AvgResponseTime,
+                threshold: 0.001, // extremely low, guaranteed to breach
+                subject: None,
+                duration: None,
+                action: SlaAction::Exec(format!("echo 'sla_breached' > {}", sla_file)),
+            }],
+        }],
         services,
         api,
     };
@@ -156,7 +159,7 @@ async fn test_chaos_api_control() {
         ScenarioDefinition {
             requests: vec![HTTPRequestDefinition::Detailed(Box::new(DetailedRequest {
                 url: format!("http://{}/", addr),
-                method: Some("GET".to_string()),
+                method: Some(HttpMethod::Get),
                 ..Default::default()
             }))],
             weight: 1,
@@ -189,9 +192,7 @@ async fn test_chaos_api_control() {
     };
 
     // Run the attack in a background task
-    let handle = tokio::spawn(async move {
-        goose::run_attack(config).await
-    });
+    let handle = tokio::spawn(async move { goose::run_attack(config).await });
 
     // Wait for the server to start up
     tokio::time::sleep(Duration::from_secs(1)).await;

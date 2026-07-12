@@ -36,7 +36,9 @@ async fn test_distributed_and_metrics_integration() {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![], services: vec![], api: None,
+        reporting: vec![],
+        services: vec![],
+        api: None,
     };
 
     unsafe {

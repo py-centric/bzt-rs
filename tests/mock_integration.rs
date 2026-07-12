@@ -1,3 +1,5 @@
+#![cfg(feature = "grpc")]
+
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
@@ -30,7 +32,7 @@ scenarios:
     .unwrap();
 
     let mut child = Command::new("cargo")
-        .args(["run", "--", config_path.to_str().unwrap(), "--mock"])
+        .args(["run", "--features", "grpc", "--", config_path.to_str().unwrap(), "--mock"])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to execute process");
@@ -87,7 +89,7 @@ scenarios:
     .unwrap();
 
     let output = Command::new("cargo")
-        .args(["run", "--", config_path.to_str().unwrap(), "--mock-run"])
+        .args(["run", "--features", "grpc", "--", config_path.to_str().unwrap(), "--mock-run"])
         .output()
         .expect("failed to execute process");
 

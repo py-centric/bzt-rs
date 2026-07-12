@@ -65,7 +65,9 @@ async fn test_branching_and_weights_integration() {
             },
         ],
         scenarios,
-        reporting: vec![], services: vec![], api: None,
+        reporting: vec![],
+        services: vec![],
+        api: None,
     };
 
     let result = goose::run_attack(config).await;

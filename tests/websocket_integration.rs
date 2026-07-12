@@ -1,3 +1,5 @@
+#![cfg(feature = "grpc")]
+
 use bzt_rs::engine;
 use bzt_rs::engine::BztError;
 use bzt_rs::models::config::{
@@ -42,7 +44,9 @@ async fn test_websocket_integration() -> Result<(), BztError> {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![], services: vec![], api: None,
+        reporting: vec![],
+        services: vec![],
+        api: None,
     };
 
     // Start mock server
@@ -50,7 +54,8 @@ async fn test_websocket_integration() -> Result<(), BztError> {
     let host_override = format!("ws://{}", addrs.http_addr);
 
     // Translate and execute
-    let attack = bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
+    let attack =
+        bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
     let stats = attack
         .execute()
         .await
@@ -58,9 +63,9 @@ async fn test_websocket_integration() -> Result<(), BztError> {
 
     // Verify metrics
     assert!(stats.duration > 0);
-    // Since we don't report WS metrics to Goose's HTTP metrics tracker yet, 
-    // the request count in `stats` will be 0. 
+    // Since we don't report WS metrics to Goose's HTTP metrics tracker yet,
+    // the request count in `stats` will be 0.
     // However, if the above didn't panic or error out, the WS transaction executed.
-    
+
     Ok(())
 }
