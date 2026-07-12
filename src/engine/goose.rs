@@ -1,13 +1,19 @@
 use crate::engine::BztError;
-use crate::engine::reporting::{CliSummary, InfluxDbReporter, JUnitReporter, RealTimeMetrics};
-use crate::engine::utils::parse_time_to_ms;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+#[cfg(feature = "influxdb-reporter")]
+use crate::engine::reporting::InfluxDbReporter;
+use crate::engine::reporting::{CliSummary, JUnitReporter, RealTimeMetrics, Reporter};
 use crate::engine::sla::SlaEngine;
+#[cfg(feature = "influxdb-reporter")]
+use crate::engine::utils::parse_time_to_ms;
 use crate::models::config::{Configuration, SlaAction, SlaCriterion, SlaMetric};
 use crate::translator::StateTranslator;
-use axum::{routing::{get, post}, Router};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use std::net::SocketAddr;
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 fn run_hooks(services: &[crate::models::config::ServiceDefinition], phase: &str) {
     for svc in services {
@@ -21,26 +27,22 @@ fn run_hooks(services: &[crate::models::config::ServiceDefinition], phase: &str)
             for cmd in cmds {
                 tracing::info!("[SHELL HOOK] Running ({}): {}", phase, cmd);
                 let output = if cfg!(target_os = "windows") {
-                    std::process::Command::new("cmd")
-                        .args(&["/C", cmd])
-                        .output()
+                    std::process::Command::new("cmd").args(["/C", cmd]).output()
                 } else {
-                    std::process::Command::new("sh")
-                        .args(&["-c", cmd])
-                        .output()
+                    std::process::Command::new("sh").args(["-c", cmd]).output()
                 };
                 match output {
                     Ok(out) => {
-                        if !out.status.success() {
+                        if out.status.success() {
+                            tracing::debug!(
+                                "[SHELL HOOK] Success: {}",
+                                String::from_utf8_lossy(&out.stdout)
+                            );
+                        } else {
                             tracing::error!(
                                 "[SHELL HOOK] Command failed with status {}: {}",
                                 out.status,
                                 String::from_utf8_lossy(&out.stderr)
-                            );
-                        } else {
-                            tracing::debug!(
-                                "[SHELL HOOK] Success: {}",
-                                String::from_utf8_lossy(&out.stdout)
                             );
                         }
                     }
@@ -53,6 +55,7 @@ fn run_hooks(services: &[crate::models::config::ServiceDefinition], phase: &str)
     }
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
     run_hooks(&config.services, "prepare");
     run_hooks(&config.services, "startup");
@@ -64,15 +67,17 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
     res
 }
 
+#[allow(clippy::too_many_lines)]
 async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
     tracing::info!(
         "Starting load test with {} scenarios",
         config.scenarios.len()
     );
 
-    let real_time_metrics = Arc::new(Mutex::new(RealTimeMetrics::default()));
+    let real_time_metrics = Arc::new(RwLock::new(RealTimeMetrics::default()));
 
     // FR-010: Enable real-time reporting if interval is set
+    #[cfg(feature = "influxdb-reporter")]
     for report_def in &config.reporting {
         if report_def.module == "influxdb" {
             let interval_opt = &report_def.interval;
@@ -82,14 +87,22 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
                     let rt_metrics = real_time_metrics.clone();
                     let report_def_clone = report_def.clone();
                     tokio::spawn(async move {
-                        let mut interval = tokio::time::interval(Duration::from_millis(interval_ms));
+                        let mut interval =
+                            tokio::time::interval(Duration::from_millis(interval_ms));
                         loop {
                             interval.tick().await;
+                            // Lock briefly, clone the bounded snapshot, then release before async I/O.
+                            // The clone is bounded because RealTimeEndpointStats caps times at 10K.
                             let metrics_snapshot = {
-                                let lock = rt_metrics.lock().unwrap();
+                                let lock = rt_metrics.read().unwrap_or_else(std::sync::PoisonError::into_inner);
                                 lock.clone()
                             };
-                            if let Err(e) = InfluxDbReporter::push_real_time_metrics(&report_def_clone, &metrics_snapshot).await {
+                            if let Err(e) = InfluxDbReporter::push_real_time_metrics(
+                                &report_def_clone,
+                                &metrics_snapshot,
+                            )
+                            .await
+                            {
                                 tracing::error!("[INFLUX-RT] Push failed: {}", e);
                             }
                         }
@@ -117,7 +130,9 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
     let (abort_tx, mut abort_rx) = tokio::sync::mpsc::channel::<String>(1);
 
     // Spawn Dynamic API server if enabled
-    if let Some(ref api_cfg) = config.api && api_cfg.enabled {
+    if let Some(ref api_cfg) = config.api
+        && api_cfg.enabled
+    {
         let metrics_clone = real_time_metrics.clone();
         let abort_tx_clone = abort_tx.clone();
         let port = api_cfg.port;
@@ -139,11 +154,11 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
 
             loop {
                 interval.tick().await;
-                let snapshot = {
-                    let lock = metrics_clone.lock().unwrap();
-                    lock.clone()
+                // FIX: Use a read lock and evaluate directly — no O(n) clone.
+                let results = {
+                    let lock = metrics_clone.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    SlaEngine::evaluate_realtime(&criteria_clone, &lock)
                 };
-                let results = SlaEngine::evaluate_realtime(&criteria_clone, &snapshot);
                 for result in &results {
                     if !result.passed {
                         match &result.action {
@@ -165,22 +180,47 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
                             }
                             SlaAction::Exec(cmd) => {
                                 if triggered_execs.insert(cmd.clone()) {
-                                    tracing::info!("[SLA-RT] Executing SLA action command: {}", cmd);
-                                    let output = if cfg!(target_os = "windows") {
-                                        std::process::Command::new("cmd").args(&["/C", cmd]).status()
-                                    } else {
-                                        std::process::Command::new("sh").args(&["-c", cmd]).status()
-                                    };
-                                    if let Err(e) = output {
-                                        tracing::error!("[SLA-RT] SLA action failed to launch: {}", e);
+                                    tracing::info!(
+                                        "[SLA-RT] Executing SLA action command: {}",
+                                        cmd
+                                    );
+                                    let cmd_for_exec = cmd.clone();
+                                    match tokio::task::spawn_blocking(move || {
+                                        if cfg!(target_os = "windows") {
+                                            std::process::Command::new("cmd")
+                                                .args(["/C", &cmd_for_exec])
+                                                .status()
+                                        } else {
+                                            std::process::Command::new("sh")
+                                                .args(["-c", &cmd_for_exec])
+                                                .status()
+                                        }
+                                    })
+                                    .await
+                                    {
+                                        Ok(Ok(_)) => {}
+                                        Ok(Err(e)) => {
+                                            tracing::error!(
+                                                "[SLA-RT] SLA action failed to execute: {}",
+                                                e
+                                            );
+                                        }
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "[SLA-RT] SLA action task failed: {}",
+                                                e
+                                            );
+                                        }
                                     }
                                 }
                             }
                             SlaAction::Stop => {
-                                let _ = abort_tx_clone.send(format!(
-                                    "SLA breach: {:?} {:.2} exceeds threshold {:.2}",
-                                    result.metric, result.actual, result.threshold
-                                )).await;
+                                let _ = abort_tx_clone
+                                    .send(format!(
+                                        "SLA breach: {:?} {:.2} exceeds threshold {:.2}",
+                                        result.metric, result.actual, result.threshold
+                                    ))
+                                    .await;
                                 return;
                             }
                         }
@@ -224,13 +264,17 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
     let summary = CliSummary::from_metrics(&stats);
     summary.print();
 
-    // REQ-6.1: Reporting (JUnit)
+    // REQ-6.1: Reporting (JUnit + InfluxDB final push)
+    let reporters: Vec<Box<dyn Reporter>> = {
+        #[allow(unused_mut)]
+        let mut r: Vec<Box<dyn Reporter>> = vec![Box::new(JUnitReporter)];
+        #[cfg(feature = "influxdb-reporter")]
+        r.push(Box::new(InfluxDbReporter));
+        r
+    };
     for report_def in &config.reporting {
-        if report_def.module == "junit-xml" {
-            JUnitReporter::generate_report(report_def, &stats)?;
-        }
-        if report_def.module == "influxdb" {
-            InfluxDbReporter::push_metrics(report_def, &stats).await?;
+        if let Some(reporter) = reporters.iter().find(|r| r.module_name() == report_def.module) {
+            reporter.report(report_def, &stats)?;
         }
     }
 
@@ -258,7 +302,11 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
                         );
                     }
                     SlaAction::Exec(cmd) => {
-                        tracing::info!("SLA breach recorded: {:?}, triggered: {}", result.metric, cmd);
+                        tracing::info!(
+                            "SLA breach recorded: {:?}, triggered: {}",
+                            result.metric,
+                            cmd
+                        );
                     }
                     SlaAction::Stop => {}
                 }
@@ -272,7 +320,7 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
 
 async fn start_api_server(
     port: u16,
-    metrics: Arc<Mutex<RealTimeMetrics>>,
+    metrics: Arc<RwLock<RealTimeMetrics>>,
     abort_tx: tokio::sync::mpsc::Sender<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use axum::http::StatusCode;
@@ -281,26 +329,36 @@ async fn start_api_server(
     let abort_tx_clone = abort_tx.clone();
 
     let app = Router::new()
-        .route("/metrics", get(move || {
-            let metrics = metrics_clone.clone();
-            async move {
-                let snapshot = {
-                    let lock = metrics.lock().unwrap();
-                    lock.clone()
-                };
-                axum::Json(snapshot)
-            }
-        }))
-        .route("/control/stop", post(move || {
-            let abort_tx = abort_tx_clone.clone();
-            async move {
-                let _ = abort_tx.send("Aborted via control API".to_string()).await;
-                (StatusCode::OK, "Load test stop initiated")
-            }
-        }));
+        .route(
+            "/metrics",
+            get(move || {
+                let metrics = metrics_clone.clone();
+                async move {
+                    // FIX: Use a read lock; clone is bounded by MAX_TIMINGS cap.
+                    let snapshot = {
+                        let lock = metrics.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+                        lock.clone()
+                    };
+                    axum::Json(snapshot)
+                }
+            }),
+        )
+        .route(
+            "/control/stop",
+            post(move || {
+                let abort_tx = abort_tx_clone.clone();
+                async move {
+                    let _ = abort_tx.send("Aborted via control API".to_string()).await;
+                    (StatusCode::OK, "Load test stop initiated")
+                }
+            }),
+        );
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!("[API] Runtime tuning control API listening on http://{}", addr);
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    tracing::info!(
+        "[API] Runtime tuning control API listening on http://{}",
+        addr
+    );
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())

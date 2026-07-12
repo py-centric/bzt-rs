@@ -1,3 +1,10 @@
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
+
 use crate::engine::utils::parse_time_to_ms;
 use crate::models::config::PacingConfig;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

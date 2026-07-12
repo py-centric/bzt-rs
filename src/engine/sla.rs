@@ -1,6 +1,12 @@
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+
 use crate::engine::BztError;
-use crate::models::config::{SlaAction, SlaCriterion, SlaMetric};
 use crate::engine::reporting::RealTimeMetrics;
+use crate::models::config::{SlaAction, SlaCriterion, SlaMetric};
 
 #[derive(Debug)]
 pub struct SlaResult {
@@ -9,6 +15,7 @@ pub struct SlaResult {
     pub threshold: f32,
     pub passed: bool,
     pub action: SlaAction,
+    #[allow(dead_code)]
     pub subject: Option<String>,
 }
 
@@ -43,6 +50,7 @@ impl SlaEngine {
         results
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn check_breaches(results: &[SlaResult]) -> Result<(), BztError> {
         for result in results {
             if !result.passed && result.action == SlaAction::Stop {
@@ -63,16 +71,15 @@ fn get_metric_value(
     subject: Option<&str>,
 ) -> f32 {
     let requests: Vec<&goose::metrics::GooseRequestMetricAggregate> = if let Some(s) = subject {
-        stats
-            .requests
-            .values()
-            .filter(|r| r.path == s)
-            .collect()
+        stats.requests.values().filter(|r| r.path == s).collect()
     } else {
         stats.requests.values().collect()
     };
 
-    let total_reqs: usize = requests.iter().map(|r| r.success_count + r.fail_count).sum();
+    let total_reqs: usize = requests
+        .iter()
+        .map(|r| r.success_count + r.fail_count)
+        .sum();
     let total_fails: usize = requests.iter().map(|r| r.fail_count).sum();
 
     match metric {
@@ -257,14 +264,17 @@ mod tests {
 }
 
 impl SlaEngine {
-    pub fn evaluate_realtime(
-        criteria: &[SlaCriterion],
-        stats: &RealTimeMetrics,
-    ) -> Vec<SlaResult> {
+    #[must_use]
+    pub fn evaluate_realtime(criteria: &[SlaCriterion], stats: &RealTimeMetrics) -> Vec<SlaResult> {
         let mut results = Vec::new();
         let elapsed_secs = stats.start_time.elapsed().as_secs_f32().max(1.0);
         for criterion in criteria {
-            let actual = get_realtime_metric_value(criterion.metric, stats, criterion.subject.as_deref(), elapsed_secs);
+            let actual = get_realtime_metric_value(
+                criterion.metric,
+                stats,
+                criterion.subject.as_deref(),
+                elapsed_secs,
+            );
             let passed = actual <= criterion.threshold;
             results.push(SlaResult {
                 metric: criterion.metric,
@@ -285,12 +295,9 @@ fn get_realtime_metric_value(
     subject: Option<&str>,
     elapsed_secs: f32,
 ) -> f32 {
-    let endpoints: Vec<&crate::engine::reporting::RealTimeEndpointStats> = if let Some(s) = subject {
-        stats
-            .endpoints
-            .get(s)
-            .into_iter()
-            .collect()
+    let endpoints: Vec<&crate::engine::reporting::RealTimeEndpointStats> = if let Some(s) = subject
+    {
+        stats.endpoints.get(s).into_iter().collect()
     } else {
         stats.endpoints.values().collect()
     };
@@ -328,9 +335,7 @@ fn get_realtime_metric_value(
             };
             percentile_from_realtime(&endpoints, pct)
         }
-        SlaMetric::Throughput => {
-            total_reqs as f32 / elapsed_secs
-        }
+        SlaMetric::Throughput => total_reqs as f32 / elapsed_secs,
     }
 }
 
