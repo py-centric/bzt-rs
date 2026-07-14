@@ -96,8 +96,14 @@ impl From<toml::de::Error> for BztError {
     }
 }
 
-pub fn init_logging() {
-    tracing_subscriber::fmt::init();
+pub fn init_logging(disable_console: bool) {
+    if disable_console {
+        let _ = tracing_subscriber::fmt()
+            .with_writer(std::io::sink)
+            .try_init();
+    } else {
+        let _ = tracing_subscriber::fmt().try_init();
+    }
 }
 
 #[cfg(test)]
@@ -106,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_init_logging() {
-        init_logging();
+        init_logging(false);
     }
 
     #[test]
