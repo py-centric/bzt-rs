@@ -15,7 +15,7 @@ use crate::engine::macros::MacroEvaluator;
 use crate::engine::pacing::PacingEngine;
 use crate::engine::reporting::RealTimeMetrics;
 use crate::engine::utils::parse_time_to_ms;
-use crate::models::config::{Configuration, HttpMethod, HTTPRequestDefinition, Protocol};
+use crate::models::config::{Configuration, HttpMethod, HTTPRequestDefinition, Protocol, ScenarioDefinition};
 #[cfg(feature = "grpc")]
 use crate::models::config::GrpcMode;
 use futures_util::{SinkExt, StreamExt};
@@ -140,9 +140,15 @@ impl StateTranslator {
                 .set_default(GooseDefault::HatchRate, hatch_rate.as_str())
                 .map_err(|e| BztError::Goose(Box::new(e)))?;
 
-            let host = host_override
-                .clone()
-                .unwrap_or_else(|| "http://localhost".to_string());
+            let mut host = host_override.clone();
+            if host.is_none() {
+                if let Some(scenario_def) = config.scenarios.get(&exec.scenario) {
+                    if let Some(extracted) = extract_default_host(scenario_def) {
+                        host = Some(extracted);
+                    }
+                }
+            }
+            let host = host.unwrap_or_else(|| "http://localhost".to_string());
             attack = *attack
                 .set_default(GooseDefault::Host, host.as_str())
                 .map_err(|e| BztError::Goose(Box::new(e)))?;
@@ -708,52 +714,78 @@ impl StateTranslator {
                                         d.headers.as_ref().map_or(0, HashMap::len)
                                     );
 
-                                    let mut reqwest_builder = match method_enum {
-                                        GooseMethod::Post => user.client.post(&full_url),
-                                        GooseMethod::Put => user.client.put(&full_url),
-                                        GooseMethod::Delete => user.client.delete(&full_url),
-                                        GooseMethod::Patch => user.client.patch(&full_url),
-                                        GooseMethod::Head => user.client.head(&full_url),
-                                        GooseMethod::Get => user.client.get(&full_url),
-                                    };
-
-                                    // Apply scenario-level + per-request headers
-                                    if let Some(ref sh) = *scenario_headers {
-                                        for (k, v) in sh {
-                                            reqwest_builder =
-                                                reqwest_builder.header(k.as_str(), v.as_str());
-                                        }
-                                    }
-                                    if let Some(ref rh) = d.headers {
-                                        for (k, v) in rh {
-                                            reqwest_builder =
-                                                reqwest_builder.header(k.as_str(), v.as_str());
-                                        }
-                                    }
-
-                                    // Apply timeout
-                                    if let Some(ref timeout_str) = d.timeout {
-                                        let ms = parse_time_to_ms(timeout_str);
-                                        if ms > 0 {
-                                            reqwest_builder =
-                                                reqwest_builder.timeout(Duration::from_millis(ms));
-                                        }
-                                    }
-
-                                    let goose_request = if final_body.is_empty() {
-                                        GooseRequest::builder()
-                                            .method(method_enum)
-                                            .path(request_name.as_str())
-                                            .build()
-                                    } else {
-                                        GooseRequest::builder()
-                                            .method(method_enum)
-                                            .path(request_name.as_str())
-                                            .set_request_builder(reqwest_builder.body(final_body))
-                                            .build()
-                                    };
+                                    let mut attempts = 0;
+                                    let mut goose_response;
                                     let start = std::time::Instant::now();
-                                    let goose_response = user.request(goose_request).await?;
+                                    loop {
+                                        let mut reqwest_builder = match method_enum.clone() {
+                                            GooseMethod::Post => user.client.post(&full_url),
+                                            GooseMethod::Put => user.client.put(&full_url),
+                                            GooseMethod::Delete => user.client.delete(&full_url),
+                                            GooseMethod::Patch => user.client.patch(&full_url),
+                                            GooseMethod::Head => user.client.head(&full_url),
+                                            GooseMethod::Get => user.client.get(&full_url),
+                                        };
+
+                                        // Apply scenario-level + per-request headers
+                                        if let Some(ref sh) = *scenario_headers {
+                                            for (k, v) in sh {
+                                                reqwest_builder =
+                                                    reqwest_builder.header(k.as_str(), v.as_str());
+                                            }
+                                        }
+                                        if let Some(ref rh) = d.headers {
+                                            for (k, v) in rh {
+                                                reqwest_builder =
+                                                    reqwest_builder.header(k.as_str(), v.as_str());
+                                            }
+                                        }
+
+                                        // Apply timeout
+                                        if let Some(ref timeout_str) = d.timeout {
+                                            let ms = parse_time_to_ms(timeout_str);
+                                            if ms > 0 {
+                                                reqwest_builder =
+                                                    reqwest_builder.timeout(Duration::from_millis(ms));
+                                            }
+                                        }
+
+                                        let goose_request = if final_body.is_empty() {
+                                            GooseRequest::builder()
+                                                .method(method_enum.clone())
+                                                .path(request_name.as_str())
+                                                .set_request_builder(reqwest_builder)
+                                                .build()
+                                        } else {
+                                            GooseRequest::builder()
+                                                .method(method_enum.clone())
+                                                .path(request_name.as_str())
+                                                .set_request_builder(reqwest_builder.body(final_body.clone()))
+                                                .build()
+                                        };
+
+                                        goose_response = user.request(goose_request).await?;
+                                        attempts += 1;
+
+                                        if let Err(ref e) = goose_response.response {
+                                            let err_str = e.to_string().to_lowercase();
+                                            if (err_str.contains("connect")
+                                                || err_str.contains("reset")
+                                                || err_str.contains("pool")
+                                                || err_str.contains("broken pipe"))
+                                                && attempts < 3
+                                            {
+                                                tracing::warn!(
+                                                    "[THROTTLE] Connection error detected: {}. Throttling and retrying (attempt {}/3)...",
+                                                     err_str,
+                                                     attempts
+                                                );
+                                                tokio::time::sleep(Duration::from_millis(50)).await;
+                                                continue;
+                                            }
+                                        }
+                                        break;
+                                    }
                                     let duration = start.elapsed().as_millis() as usize;
 
                                     // Update real-time metrics
@@ -844,6 +876,34 @@ impl StateTranslator {
 
         transaction
     }
+}
+
+fn extract_default_host(scenario_def: &ScenarioDefinition) -> Option<String> {
+    for req in &scenario_def.requests {
+        let url_str = match req {
+            HTTPRequestDefinition::Simple(url) => url.as_str(),
+            HTTPRequestDefinition::Detailed(d) => d.url.as_str(),
+        };
+        if url_str.starts_with("http://")
+            || url_str.starts_with("https://")
+            || url_str.starts_with("ws://")
+            || url_str.starts_with("wss://")
+            || url_str.starts_with("grpc://")
+        {
+            if let Some((scheme, rest)) = url_str.split_once("://") {
+                let host_part = rest.split('/')
+                    .next()?
+                    .split('?')
+                    .next()?
+                    .split('#')
+                    .next()?;
+                if !host_part.is_empty() {
+                    return Some(format!("{}://{}", scheme, host_part));
+                }
+            }
+        }
+    }
+    None
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -981,5 +1041,26 @@ mod tests {
         };
         let result = StateTranslator::translate(&config, None, None).await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_extract_default_host_resolution() {
+        let mut scenarios = HashMap::new();
+        scenarios.insert(
+            "test".to_string(),
+            ScenarioDefinition {
+                requests: vec![
+                    HTTPRequestDefinition::Simple("/relative-path".to_string()),
+                    HTTPRequestDefinition::Simple("https://my-domain.org:9000/api/v1".to_string()),
+                ],
+                weight: 1,
+                think_time: None,
+                data_sources: None,
+                headers: None,
+            },
+        );
+        let scenario_def = scenarios.get("test").unwrap();
+        let extracted = extract_default_host(scenario_def);
+        assert_eq!(extracted, Some("https://my-domain.org:9000".to_string()));
     }
 }
