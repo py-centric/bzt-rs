@@ -18,7 +18,7 @@ pub(crate) mod utils;
 pub mod validation;
 
 #[derive(Debug, thiserror::Error)]
-pub enum BztError {
+pub enum PummelError {
     #[error("[IO] {context}: {source}")]
     Io {
         source: std::io::Error,
@@ -57,18 +57,18 @@ pub enum BztError {
     Internal(String),
 }
 
-impl From<std::io::Error> for BztError {
+impl From<std::io::Error> for PummelError {
     fn from(source: std::io::Error) -> Self {
-        BztError::Io {
+        PummelError::Io {
             source,
             context: "operation failed".to_string(),
         }
     }
 }
 
-impl From<serde_json::Error> for BztError {
+impl From<serde_json::Error> for PummelError {
     fn from(e: serde_json::Error) -> Self {
-        BztError::Serde {
+        PummelError::Serde {
             message: e.to_string(),
             file_path: None,
             source: Some(Box::new(e)),
@@ -76,9 +76,9 @@ impl From<serde_json::Error> for BztError {
     }
 }
 
-impl From<serde_yaml::Error> for BztError {
+impl From<serde_yaml::Error> for PummelError {
     fn from(e: serde_yaml::Error) -> Self {
-        BztError::Serde {
+        PummelError::Serde {
             message: e.to_string(),
             file_path: None,
             source: None,
@@ -86,9 +86,9 @@ impl From<serde_yaml::Error> for BztError {
     }
 }
 
-impl From<toml::de::Error> for BztError {
+impl From<toml::de::Error> for PummelError {
     fn from(e: toml::de::Error) -> Self {
-        BztError::Serde {
+        PummelError::Serde {
             message: e.to_string(),
             file_path: None,
             source: Some(Box::new(e)),
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_not_implemented_display() {
-        let err = BztError::NotImplemented {
+        let err = PummelError::NotImplemented {
             feature: "distributed mode".to_string(),
         };
         let msg = err.to_string();
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_validation_display() {
-        let err = BztError::Validation {
+        let err = PummelError::Validation {
             field: "concurrency".to_string(),
             reason: "must be > 0".to_string(),
         };
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_sla_violation_display() {
-        let err = BztError::SlaViolation {
+        let err = PummelError::SlaViolation {
             metric: "fail_rate".to_string(),
             actual: 0.15,
             threshold: 0.1,
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_env_error_display() {
-        let err = BztError::Environment {
+        let err = PummelError::Environment {
             var: "AWS_SECRET_KEY".to_string(),
             reason: "blocked".to_string(),
         };
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn test_serde_error_from_json_has_source() {
         let json_err = serde_json::from_str::<serde_json::Value>("{invalid:}").unwrap_err();
-        let bzt_err: BztError = json_err.into();
+        let bzt_err: PummelError = json_err.into();
         let msg = bzt_err.to_string();
         assert!(msg.contains("[SERDE]"));
         // source() should return Some for json errors
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_serde_error_from_toml_has_source() {
         let toml_err = toml::from_str::<toml::Value>("invalid = [").unwrap_err();
-        let bzt_err: BztError = toml_err.into();
+        let bzt_err: PummelError = toml_err.into();
         let msg = bzt_err.to_string();
         assert!(msg.contains("[SERDE]"));
         assert!(std::error::Error::source(&bzt_err).is_some());
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn test_serde_error_from_yaml_no_source() {
         let yaml_err = serde_yaml::from_str::<serde_yaml::Value>("'unclosed").unwrap_err();
-        let bzt_err: BztError = yaml_err.into();
+        let bzt_err: PummelError = yaml_err.into();
         let msg = bzt_err.to_string();
         assert!(msg.contains("[SERDE]"));
         // serde_yaml::Error is Box<dyn Error> without Send, so source is None
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_io_error_source() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
-        let bzt_err: BztError = io_err.into();
+        let bzt_err: PummelError = io_err.into();
         let msg = bzt_err.to_string();
         assert!(msg.contains("[IO]"));
         assert!(std::error::Error::source(&bzt_err).is_some());
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_networking_error_display() {
-        let err = BztError::Network {
+        let err = PummelError::Network {
             host: "api.example.com".to_string(),
             operation: "connect".to_string(),
             details: "connection refused".to_string(),
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_mock_error_display() {
-        let err = BztError::Mock {
+        let err = PummelError::Mock {
             reason: "server not started".to_string(),
         };
         let msg = err.to_string();
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_internal_error_display() {
-        let err = BztError::Internal("unexpected state".to_string());
+        let err = PummelError::Internal("unexpected state".to_string());
         let msg = err.to_string();
         assert!(msg.contains("INTERNAL"));
         assert!(msg.contains("unexpected state"));
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_goose_error_display() {
-        let err = BztError::Goose(Box::new(std::io::Error::other("goose failed")));
+        let err = PummelError::Goose(Box::new(std::io::Error::other("goose failed")));
         let msg = err.to_string();
         assert!(msg.contains("GOOSE"));
         assert!(msg.contains("goose failed"));

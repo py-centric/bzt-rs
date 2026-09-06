@@ -3,17 +3,17 @@
 **Feature Branch**: `004-architectural-remediation`
 **Created**: 2026-05-09
 **Status**: Draft
-**Input**: Architecture analysis report identifying gaps between spec claims and actual implementation in bzt-rs load testing tool
+**Input**: Architecture analysis report identifying gaps between spec claims and actual implementation in pummel load testing tool
 
 ## User Scenarios & Testing
 
 ### User Story 1 - CLI Flags Work Reliably (Priority: P1)
 
-A DevOps engineer runs `bzt-rs test.yaml --manager` expecting to start a distributed load test. Instead of silently doing nothing, the tool either works correctly or clearly tells them the feature is unavailable.
+A DevOps engineer runs `pummel test.yaml --manager` expecting to start a distributed load test. Instead of silently doing nothing, the tool either works correctly or clearly tells them the feature is unavailable.
 
 **Why this priority**: Engineers lose trust in a tool when documented flags silently do nothing. This is a credibility issue that undermines all other features.
 
-**Independent Test**: Run `bzt-rs test.yaml --manager --expect-workers 3` and verify the tool either starts in distributed mode or exits with a clear "not implemented" error message.
+**Independent Test**: Run `pummel test.yaml --manager --expect-workers 3` and verify the tool either starts in distributed mode or exits with a clear "not implemented" error message.
 
 **Acceptance Scenarios**:
 
@@ -91,7 +91,7 @@ An engineer runs a 5-minute load test. After completion, they see a summary tabl
 
 ### User Story 6 - Standard Taurus YAML Fields Are Recognized (Priority: P3)
 
-A user migrates an existing Taurus YAML test suite to bzt-rs. Fields like `label`, `headers`, `timeout`, and `body-file` are accepted and have effect, rather than being silently dropped.
+A user migrates an existing Taurus YAML test suite to pummel. Fields like `label`, `headers`, `timeout`, and `body-file` are accepted and have effect, rather than being silently dropped.
 
 **Why this priority**: Silent field dropping leads to subtle configuration bugs. Users expect Taurus YAML compatibility as advertised.
 
@@ -164,7 +164,7 @@ A user migrates an existing Taurus YAML test suite to bzt-rs. Fields like `label
 
 ## Assumptions
 
-- Users run bzt-rs in CI/CD environments where security boundaries around file access matter
+- Users run pummel in CI/CD environments where security boundaries around file access matter
 - Users migrating from Taurus expect high compatibility with Taurus YAML schema
 - The Goose engine is the only execution backend and will remain so for the foreseeable future
 - Environment variables accessible to the process are intended to be accessible from config files, except for well-known sensitive patterns

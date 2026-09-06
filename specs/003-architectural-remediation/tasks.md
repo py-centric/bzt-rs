@@ -35,21 +35,21 @@
 
 ## Phase 2: Fix Error Handling (P0 - Quality)
 
-**Purpose**: Replace stringly-typed errors with the defined `BztError` enum.
+**Purpose**: Replace stringly-typed errors with the defined `PummelError` enum.
 
-- [ ] T201 [errors] Populate `BztError` with proper variants in `src/engine/mod.rs`
+- [ ] T201 [errors] Populate `PummelError` with proper variants in `src/engine/mod.rs`
   - Add variants: `Io`, `Serde`, `Goose`, `Parse`, `Validation`, `Network`, `SlaViolation`
   - Use `#[from]` for automatic conversion from `std::io::Error`, `serde::Error`, etc.
   - Each variant carries structured context data, not just strings
 
-- [ ] T202 [errors] Migrate `src/parser/` from `Result<_, String>` to `Result<_, BztError>`
+- [ ] T202 [errors] Migrate `src/parser/` from `Result<_, String>` to `Result<_, PummelError>`
   - All three parsers: `yaml.rs`, `json.rs`, `toml.rs`
   - Callsites in `src/main.rs:73-88`
 
-- [ ] T203 [errors] Migrate `src/translator/mod.rs` from `Result<_, String>` to `Result<_, BztError>`
+- [ ] T203 [errors] Migrate `src/translator/mod.rs` from `Result<_, String>` to `Result<_, PummelError>`
   - `StateTranslator::translate`, `evaluate_condition`, duration parsers
 
-- [ ] T204 [errors] Migrate `src/engine/` modules from `Result<_, String>` to `Result<_, BztError>`
+- [ ] T204 [errors] Migrate `src/engine/` modules from `Result<_, String>` to `Result<_, PummelError>`
   - `goose.rs`, `control_flow.rs`, `data_sources.rs`, `extraction.rs`, `mock.rs`, `validation.rs`
 
 - [ ] T205 [errors] Remove unused `#[allow(clippy::missing_errors_doc)]` annotations after migration
@@ -193,7 +193,7 @@
 
 **Purpose**: Make the codebase honest about what it delivers.
 
-- [ ] T901 [spec] Update `specs/001-bzt-rs-core/tasks.md` — unmark tasks that are incomplete:
+- [ ] T901 [spec] Update `specs/001-pummel-core/tasks.md` — unmark tasks that are incomplete:
   - T047 (sla): file is no-op → uncheck
   - T048 (pacing): file is no-op → uncheck
   - T049 (distributed): only env vars → uncheck
@@ -237,7 +237,7 @@
 
 1. **P0 — Phase 1 (T101-T103)**: Implement or remove no-op modules. This is a credibility blocker.
 2. **P0 — Phase 3 (T301-T306 or T310-T314)**: Fix misleading CLI flags. Users should not see flags that don't work.
-3. **P1 — Phase 2 (T201-T205)**: Migrate to `BztError`. Touches every module, repays debugging debt.
+3. **P1 — Phase 2 (T201-T205)**: Migrate to `PummelError`. Touches every module, repays debugging debt.
 4. **P1 — Phase 4 (T401-T402)**: Add CLI reporter. Users need terminal output from every test run.
 5. **P1 — Phase 5 (T501-T505)**: Security hardening. Always time-sensitive.
 6. **P1 — Phase 6 (T601-T607)**: Config model completeness. Ensures Taurus compatibility.

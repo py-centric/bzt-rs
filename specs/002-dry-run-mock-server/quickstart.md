@@ -4,7 +4,7 @@
 Before running a large-scale load test, use the `--dry-run` flag to ensure your configuration is valid and all required files exist:
 
 ```bash
-bzt-rs --dry-run test.yaml
+pummel --dry-run test.yaml
 ```
 
 ## Running Local Functional Tests
@@ -14,14 +14,14 @@ You can verify your scenario logic (extraction, interpolation, assertions) again
 Useful if you want to manually point another tool at the mock:
 
 ```bash
-bzt-rs --mock test.yaml
+pummel --mock test.yaml
 ```
 
 ### Option 2: Integrated Mock Run
-Automatically starts the mock, points `bzt-rs` at it, and runs the test:
+Automatically starts the mock, points `pummel` at it, and runs the test:
 
 ```bash
-bzt-rs --mock-run test.yaml
+pummel --mock-run test.yaml
 ```
 
 ## Mock Server Behavior

@@ -1,6 +1,6 @@
-# bzt-rs Examples
+# pummel Examples
 
-A collection of runnable example configurations for bzt-rs, organized by
+A collection of runnable example configurations for pummel, organized by
 feature. All examples work with the built-in mock server.
 
 ## Quick Start

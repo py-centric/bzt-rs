@@ -199,6 +199,6 @@ scenarios:
     
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    // When console is disabled, no prints to stdout should occur from bzt-rs
+    // When console is disabled, no prints to stdout should occur from pummel
     assert!(stdout.trim().is_empty(), "Stdout should be empty but got: {}", stdout);
 }

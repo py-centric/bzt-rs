@@ -19,8 +19,8 @@ A virtual user will:
 
 5. Poll the order status until it is confirmed.
 
-Full Configuration (`ecommerce_test.yaml`)
-------------------------------------------
+Full Configuration (``ecommerce_test.yaml``)
+--------------------------------------------
 
 .. code-block:: yaml
 
@@ -34,6 +34,8 @@ Full Configuration (`ecommerce_test.yaml`)
      checkout-flow:
        data-sources:
        - users.csv             # CSV file containing 'username' and 'password'
+       headers:
+         Accept: application/json
 
        requests:
        # Step 1: Authentication
@@ -82,33 +84,49 @@ Full Configuration (`ecommerce_test.yaml`)
    reporting:
    - module: junit-xml
      filename: test_results.xml
-   - module: prometheus
-     port: 8080
+     failed-threshold: 0.05
+     sla:
+     - metric: fail-rate
+       threshold: 0.05
+       action: warn
+     - metric: avg-response-time
+       threshold: 5000.0
+       action: warn
 
 Step-by-Step Breakdown
 ----------------------
 
 ### 1. Execution Settings
-We configure `50` concurrent users with a `1m` ramp-up. This ensures that
+We configure ``50`` concurrent users with a ``1m`` ramp-up. This ensures that
 load is added gradually to avoid overwhelming the system at the very
 beginning of the test.
 
 ### 2. Data Sources
-The `users.csv` file provides unique credentials for each virtual user,
+The ``users.csv`` file provides unique credentials for each virtual user,
 preventing duplicate login attempts and ensuring a realistic distribution
 of accounts.
 
-### 3. State Management
-We use `extract-jsonpath` to capture the `authToken` from the login response
-and reuse it in the `Authorization` header for all subsequent requests.
+### 3. Scenario-Level Headers
+The ``headers`` block under the scenario applies the ``Accept`` header to
+every request, avoiding repetition in individual request definitions.
+
+### 4. State Management
+We use ``extract-jsonpath`` to capture the ``authToken`` from the login response
+and reuse it in the ``Authorization`` header for all subsequent requests.
 This maintains the stateful nature of a real user session.
 
-### 4. Dynamic Data
-The `${faker.word}` macro generates a random search term for each request,
+### 5. Dynamic Data
+The ``${faker.word}`` macro generates a random search term for each request,
 preventing the backend from serving cached results and ensuring a
 comprehensive test of the search index.
 
-### 5. Control Flow
-The `if` condition handles cases where a search might return no results,
-while the `loop` ensures the user waits for their order to process before
+### 6. Control Flow
+The ``if`` condition handles cases where a search might return no results,
+while the ``loop`` ensures the user waits for their order to process before
 finishing the scenario, mirroring real user patience.
+
+### 7. SLA Criteria
+The reporting section defines two SLA criteria: a fail-rate threshold of
+5% (warn if exceeded) and an average response time threshold of 5000ms
+(warn). These are evaluated after the test completes and reported in
+console output alongside the JUnit XML report.

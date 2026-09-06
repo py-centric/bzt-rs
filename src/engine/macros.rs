@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::engine::env::EnvironmentLoader;
 #[cfg(feature = "faker-macros")]
 use fake::Fake;
@@ -112,12 +112,12 @@ impl MacroEvaluator {
     ///
     /// # Errors
     ///
-    /// Returns `BztError::Environment` if a sensitive/blocked env var is referenced.
+    /// Returns `PummelError::Environment` if a sensitive/blocked env var is referenced.
     #[allow(clippy::missing_panics_doc)]
     pub fn evaluate(
         input: &str,
         record: Option<&HashMap<String, String>>,
-    ) -> Result<String, BztError> {
+    ) -> Result<String, PummelError> {
         let mut output = input.to_string();
 
         // 1. Evaluate Dynamic Macros
@@ -151,7 +151,7 @@ impl MacroEvaluator {
         for cap in ENV_SIMPLE_PATTERN.captures_iter(&output) {
             let var_name = &cap[1];
             if is_sensitive_var(var_name) {
-                return Err(BztError::Environment {
+                return Err(PummelError::Environment {
                     var: var_name.to_string(),
                     reason: "access to sensitive environment variable is blocked".to_string(),
                 });

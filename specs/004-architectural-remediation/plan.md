@@ -5,7 +5,7 @@
 
 ## Summary
 
-Remediate gaps between spec claims and actual implementation in bzt-rs: implement no-op engine modules (env.rs, pacing.rs, sla.rs), fix misleading CLI flags (--manager, --worker, --metrics, --otel), replace stringly-typed errors with structured BztError, add security hardening (path traversal, file size limits, env var protection, unknown field rejection, localhost binding), implement CLI reporter for post-test output, complete Taurus config model (label, headers, timeout, body-file, structured data-sources, pacing config), add missing unit tests, and support all standard HTTP methods.
+Remediate gaps between spec claims and actual implementation in pummel: implement no-op engine modules (env.rs, pacing.rs, sla.rs), fix misleading CLI flags (--manager, --worker, --metrics, --otel), replace stringly-typed errors with structured PummelError, add security hardening (path traversal, file size limits, env var protection, unknown field rejection, localhost binding), implement CLI reporter for post-test output, complete Taurus config model (label, headers, timeout, body-file, structured data-sources, pacing config), add missing unit tests, and support all standard HTTP methods.
 
 ## Technical Context
 
@@ -77,7 +77,7 @@ src/
 ├── translator/
 │   └── mod.rs            # Extend HTTP method support (PUT/DELETE/PATCH/HEAD/OPTIONS)
 └── engine/
-    ├── mod.rs            # Populate BztError enum variants
+    ├── mod.rs            # Populate PummelError enum variants
     ├── env.rs            # Implement EnvironmentLoader
     ├── pacing.rs         # Implement PacingEngine
     ├── sla.rs            # Implement SlaEngine

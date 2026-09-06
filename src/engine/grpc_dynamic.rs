@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use prost_reflect::{DescriptorPool, DynamicMessage, MethodDescriptor};
 use std::collections::HashSet;
 use tokio_stream::StreamExt;
@@ -15,16 +15,16 @@ pub struct DynamicGrpcClient {
 
 impl DynamicGrpcClient {
     #[allow(clippy::missing_errors_doc)]
-    pub async fn discover(host: &str) -> Result<Self, BztError> {
+    pub async fn discover(host: &str) -> Result<Self, PummelError> {
         let channel = Channel::from_shared(host.to_string())
-            .map_err(|e| BztError::Network {
+            .map_err(|e| PummelError::Network {
                 host: host.to_string(),
                 operation: "Connect for reflection".to_string(),
                 details: e.to_string(),
             })?
             .connect()
             .await
-            .map_err(|e| BztError::Network {
+            .map_err(|e| PummelError::Network {
                 host: host.to_string(),
                 operation: "Establish reflection connection".to_string(),
                 details: e.to_string(),
@@ -42,7 +42,7 @@ impl DynamicGrpcClient {
         let mut stream = client
             .server_reflection_info(tokio_stream::iter(vec![request]))
             .await
-            .map_err(|e| BztError::Internal(format!("gRPC Reflection failed: {e}")))?
+            .map_err(|e| PummelError::Internal(format!("gRPC Reflection failed: {e}")))?
             .into_inner();
 
         let mut services = Vec::new();
@@ -64,7 +64,7 @@ impl DynamicGrpcClient {
             let mut s = client
                 .server_reflection_info(tokio_stream::iter(vec![req]))
                 .await
-                .map_err(|e| BztError::Internal(format!("gRPC FileDescriptor fetch failed: {e}")))?
+                .map_err(|e| PummelError::Internal(format!("gRPC FileDescriptor fetch failed: {e}")))?
                 .into_inner();
 
             if let Some(Ok(resp)) = s.next().await {
@@ -74,7 +74,7 @@ impl DynamicGrpcClient {
                         if discovered_files.insert(raw_fd.clone()) {
                             let _ = pool.add_file_descriptor_proto(
                                 prost_types::FileDescriptorProto::decode(&raw_fd[..])
-                                    .map_err(|e| BztError::Internal(format!("Failed to decode FileDescriptorProto: {e}")))?
+                                    .map_err(|e| PummelError::Internal(format!("Failed to decode FileDescriptorProto: {e}")))?
                             );
                         }
                     }
@@ -86,13 +86,13 @@ impl DynamicGrpcClient {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn find_method(&self, full_name: &str) -> Result<MethodDescriptor, BztError> {
+    pub fn find_method(&self, full_name: &str) -> Result<MethodDescriptor, PummelError> {
         for service in self.pool.services() {
             if let Some(method) = service.methods().find(|m| m.full_name() == full_name) {
                 return Ok(method);
             }
         }
-        Err(BztError::Validation {
+        Err(PummelError::Validation {
             field: "method_name".to_string(),
             reason: format!("Method not found via reflection: {full_name}"),
         })
@@ -104,10 +104,10 @@ impl DynamicGrpcClient {
         channel: Channel,
         method: MethodDescriptor,
         payload_json: &str,
-    ) -> Result<String, BztError> {
+    ) -> Result<String, PummelError> {
         let input_msg = self.json_to_dynamic(method.input(), payload_json)?;
         let mut grpc = Grpc::new(channel);
-        grpc.ready().await.map_err(|e| BztError::Network {
+        grpc.ready().await.map_err(|e| PummelError::Network {
             host: "gRPC ready check".to_string(),
             operation: "ready".to_string(),
             details: e.to_string(),
@@ -117,11 +117,11 @@ impl DynamicGrpcClient {
         let client = grpc.unary(
             tonic::Request::new(input_msg),
             path.parse()
-                .map_err(|e| BztError::Internal(format!("Invalid path {path}: {e}")))?,
+                .map_err(|e| PummelError::Internal(format!("Invalid path {path}: {e}")))?,
             DynamicCodec::new(method.output()),
         );
 
-        let response = client.await.map_err(|e| BztError::Network {
+        let response = client.await.map_err(|e| PummelError::Network {
             host: "gRPC Call".to_string(),
             operation: "unary".to_string(),
             details: e.to_string(),
@@ -137,12 +137,12 @@ impl DynamicGrpcClient {
         method: MethodDescriptor,
         payload_json: &str,
     ) -> Result<
-        Box<dyn tokio_stream::Stream<Item = Result<String, BztError>> + Unpin + Send>,
-        BztError,
+        Box<dyn tokio_stream::Stream<Item = Result<String, PummelError>> + Unpin + Send>,
+        PummelError,
     > {
         let input_msg = self.json_to_dynamic(method.input(), payload_json)?;
         let mut grpc = Grpc::new(channel);
-        grpc.ready().await.map_err(|e| BztError::Network {
+        grpc.ready().await.map_err(|e| PummelError::Network {
             host: "gRPC ready check".to_string(),
             operation: "ready".to_string(),
             details: e.to_string(),
@@ -153,11 +153,11 @@ impl DynamicGrpcClient {
             .server_streaming(
                 tonic::Request::new(input_msg),
                 path.parse()
-                    .map_err(|e| BztError::Internal(format!("Invalid path {path}: {e}")))?,
+                    .map_err(|e| PummelError::Internal(format!("Invalid path {path}: {e}")))?,
                 DynamicCodec::new(method.output()),
             )
             .await
-            .map_err(|e| BztError::Network {
+            .map_err(|e| PummelError::Network {
                 host: "gRPC Call".to_string(),
                 operation: "server_streaming".to_string(),
                 details: e.to_string(),
@@ -165,8 +165,8 @@ impl DynamicGrpcClient {
             .into_inner();
 
         Ok(Box::new(stream.map(move |res| match res {
-            Ok(msg) => serde_json::to_string(&msg).map_err(|e| BztError::Internal(e.to_string())),
-            Err(e) => Err(BztError::Network {
+            Ok(msg) => serde_json::to_string(&msg).map_err(|e| PummelError::Internal(e.to_string())),
+            Err(e) => Err(PummelError::Network {
                 host: "gRPC Stream".to_string(),
                 operation: "recv".to_string(),
                 details: e.to_string(),
@@ -180,9 +180,9 @@ impl DynamicGrpcClient {
         channel: Channel,
         method: MethodDescriptor,
         payloads: Vec<String>,
-    ) -> Result<String, BztError> {
+    ) -> Result<String, PummelError> {
         let mut grpc = Grpc::new(channel);
-        grpc.ready().await.map_err(|e| BztError::Network {
+        grpc.ready().await.map_err(|e| PummelError::Network {
             host: "gRPC ready check".to_string(),
             operation: "ready".to_string(),
             details: e.to_string(),
@@ -199,11 +199,11 @@ impl DynamicGrpcClient {
             .client_streaming(
                 tonic::Request::new(stream),
                 path.parse()
-                    .map_err(|e| BztError::Internal(format!("Invalid path {path}: {e}")))?,
+                    .map_err(|e| PummelError::Internal(format!("Invalid path {path}: {e}")))?,
                 DynamicCodec::new(method.output()),
             )
             .await
-            .map_err(|e| BztError::Network {
+            .map_err(|e| PummelError::Network {
                 host: "gRPC Call".to_string(),
                 operation: "client_streaming".to_string(),
                 details: e.to_string(),
@@ -219,8 +219,8 @@ impl DynamicGrpcClient {
         method: MethodDescriptor,
         payloads: Vec<String>,
     ) -> Result<
-        Box<dyn tokio_stream::Stream<Item = Result<String, BztError>> + Unpin + Send>,
-        BztError,
+        Box<dyn tokio_stream::Stream<Item = Result<String, PummelError>> + Unpin + Send>,
+        PummelError,
     > {
         let mut grpc = Grpc::new(channel);
         let path = format!("/{}/{}", method.parent_service().full_name(), method.name());
@@ -235,11 +235,11 @@ impl DynamicGrpcClient {
             .streaming(
                 tonic::Request::new(stream),
                 path.parse()
-                    .map_err(|e| BztError::Internal(format!("Invalid path {path}: {e}")))?,
+                    .map_err(|e| PummelError::Internal(format!("Invalid path {path}: {e}")))?,
                 DynamicCodec::new(method.output()),
             )
             .await
-            .map_err(|e| BztError::Network {
+            .map_err(|e| PummelError::Network {
                 host: "gRPC Call".to_string(),
                 operation: "bidi_streaming".to_string(),
                 details: e.to_string(),
@@ -247,8 +247,8 @@ impl DynamicGrpcClient {
             .into_inner();
 
         Ok(Box::new(response_stream.map(|res| match res {
-            Ok(msg) => serde_json::to_string(&msg).map_err(|e| BztError::Internal(e.to_string())),
-            Err(e) => Err(BztError::Network {
+            Ok(msg) => serde_json::to_string(&msg).map_err(|e| PummelError::Internal(e.to_string())),
+            Err(e) => Err(PummelError::Network {
                 host: "gRPC Stream".to_string(),
                 operation: "recv".to_string(),
                 details: e.to_string(),
@@ -261,17 +261,17 @@ impl DynamicGrpcClient {
         &self,
         desc: prost_reflect::MessageDescriptor,
         json: &str,
-    ) -> Result<DynamicMessage, BztError> {
+    ) -> Result<DynamicMessage, PummelError> {
         let mut deserializer = serde_json::Deserializer::from_str(json);
-        DynamicMessage::deserialize(desc, &mut deserializer).map_err(|e| BztError::Validation {
+        DynamicMessage::deserialize(desc, &mut deserializer).map_err(|e| PummelError::Validation {
             field: "body".to_string(),
             reason: format!("Failed to parse gRPC JSON payload: {e}"),
         })
     }
 
     #[allow(clippy::unused_self)]
-    fn dynamic_to_json(&self, msg: &DynamicMessage) -> Result<String, BztError> {
-        serde_json::to_string(msg).map_err(|e| BztError::Internal(e.to_string()))
+    fn dynamic_to_json(&self, msg: &DynamicMessage) -> Result<String, PummelError> {
+        serde_json::to_string(msg).map_err(|e| PummelError::Internal(e.to_string()))
     }
 }
 

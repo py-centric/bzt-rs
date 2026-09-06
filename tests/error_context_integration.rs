@@ -15,7 +15,7 @@ fn test_parser_error_includes_category_and_file_path() {
     writeln!(file, "    requests:").unwrap();
     writeln!(file, "      - http://localhost:8080/").unwrap();
 
-    let result = bzt_rs::parser::yaml::YamlParser::parse(file.path());
+    let result = pummel::parser::yaml::YamlParser::parse(file.path());
     let err = result.unwrap_err();
     let msg = err.to_string();
 
@@ -47,7 +47,7 @@ fn test_deny_unknown_fields_error_includes_context() {
     writeln!(file, "    requests:").unwrap();
     writeln!(file, "      - http://localhost:8080/").unwrap();
 
-    let result = bzt_rs::parser::yaml::YamlParser::parse(file.path());
+    let result = pummel::parser::yaml::YamlParser::parse(file.path());
     let err = result.unwrap_err();
     let msg = err.to_string();
 
@@ -82,7 +82,7 @@ fn test_broken_yaml_syntax_error_includes_context() {
     writeln!(file, "    requests:").unwrap();
     writeln!(file, "      - http://localhost:8080/").unwrap();
 
-    let result = bzt_rs::parser::yaml::YamlParser::parse(file.path());
+    let result = pummel::parser::yaml::YamlParser::parse(file.path());
     let err = result.unwrap_err();
     let msg = err.to_string();
 
@@ -115,9 +115,9 @@ scenarios:
     requests:
       - http://localhost:8080/
 "#;
-    let config: bzt_rs::models::config::Configuration = serde_yaml::from_str(yaml).unwrap();
+    let config: pummel::models::config::Configuration = serde_yaml::from_str(yaml).unwrap();
 
-    let result = bzt_rs::translator::StateTranslator::translate(&config, None, None).await;
+    let result = pummel::translator::StateTranslator::translate(&config, None, None).await;
     let msg = match result {
         Ok(_) => panic!("expected translation to fail for missing data source"),
         Err(e) => e.to_string(),

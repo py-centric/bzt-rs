@@ -1,9 +1,9 @@
-# Feature Specification: bzt-rs Core Architecture & Roadmap
+# Feature Specification: pummel Core Architecture & Roadmap
 
-**Feature Branch**: `001-bzt-rs-core`  
+**Feature Branch**: `001-pummel-core`  
 **Created**: April 12, 2026  
 **Status**: Draft  
-**Input**: User description: Software Requirements Specification (SRS) for bzt-rs (Goose-Taurus Runner) Version 9.2.
+**Input**: User description: Software Requirements Specification (SRS) for pummel (Goose-Taurus Runner) Version 9.2.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -119,4 +119,4 @@ As a Security Tester, I want to inject environment variables, dynamic data (fake
 
 - Target users are technical professionals (Developers, QA, SREs) comfortable with CLI tools and configuration files.
 - Tests will primarily target HTTP/S APIs, with subsequent phases introducing other protocols.
-- The underlying engine (Goose) provides the necessary low-level async performance; bzt-rs acts as an orchestration, configuration, and state management layer on top of it.
+- The underlying engine (Goose) provides the necessary low-level async performance; pummel acts as an orchestration, configuration, and state management layer on top of it.

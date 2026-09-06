@@ -40,22 +40,22 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [x] T005 Populate `BztError` enum with all variants (`Io`, `Serde`, `Goose`, `Validation`, `Mock`, `Network`, `SlaViolation`, `Environment`, `NotImplemented`) in `src/engine/mod.rs`
+- [x] T005 Populate `PummelError` enum with all variants (`Io`, `Serde`, `Goose`, `Validation`, `Mock`, `Network`, `SlaViolation`, `Environment`, `NotImplemented`) in `src/engine/mod.rs`
 - [x] T006 Implement `#[from]` conversions for `std::io::Error`, `serde_json::Error`, `serde_yaml::Error`, `toml::de::Error` in `src/engine/mod.rs`
-- [x] T007 [P] Migrate `src/parser/yaml.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T008 [P] Migrate `src/parser/json.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T009 [P] Migrate `src/parser/toml.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T010 [P] Migrate `src/translator/mod.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T011 [P] Migrate `src/engine/goose.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T012 [P] Migrate `src/engine/data_sources.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T013 [P] Migrate `src/engine/mock.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T014 [P] Migrate `src/engine/validation.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T015 [P] Migrate `src/engine/reporting.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T016 [P] Migrate `src/engine/control_flow.rs` from `Result<_, String>` to `Result<_, BztError>`
-- [x] T017 Migrate `src/main.rs` call sites to use `BztError` instead of `Result<(), String>`
+- [x] T007 [P] Migrate `src/parser/yaml.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T008 [P] Migrate `src/parser/json.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T009 [P] Migrate `src/parser/toml.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T010 [P] Migrate `src/translator/mod.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T011 [P] Migrate `src/engine/goose.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T012 [P] Migrate `src/engine/data_sources.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T013 [P] Migrate `src/engine/mock.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T014 [P] Migrate `src/engine/validation.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T015 [P] Migrate `src/engine/reporting.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T016 [P] Migrate `src/engine/control_flow.rs` from `Result<_, String>` to `Result<_, PummelError>`
+- [x] T017 Migrate `src/main.rs` call sites to use `PummelError` instead of `Result<(), String>`
 - [x] T018 Verify all `#![allow(clippy::pedantic)]` and `#[allow(clippy::missing_errors_doc)]` are no longer needed after migration
 
-**Checkpoint**: Foundation ready — BztError is the single error type across all modules. User story implementation can now begin.
+**Checkpoint**: Foundation ready — PummelError is the single error type across all modules. User story implementation can now begin.
 
 ---
 
@@ -76,7 +76,7 @@
 - [X] T022 [P] [US1] Remove `--metrics`, `--metrics-port` from `Args` struct in `src/main.rs`
 - [X] T023 [P] [US1] Remove `--otel` from `Args` struct in `src/main.rs`
 - [X] T024 [US1] Remove Goose env var scaffolding for manager/worker/metrics/otel in `src/main.rs`
-- [X] T025 [US1] Replace WebSocket and gRPC `println!` stubs in `src/translator/mod.rs` with clear "not supported yet" errors using `BztError::NotImplemented`
+- [X] T025 [US1] Replace WebSocket and gRPC `println!` stubs in `src/translator/mod.rs` with clear "not supported yet" errors using `PummelError::NotImplemented`
 - [X] T026 [US1] Update `README.md` to remove misleading feature claims (distributed mode, Prometheus, OTel)
 - [X] T027 [US1] Add pedantic DEBUG logging for CLI flag handling in `src/main.rs`
 
@@ -122,13 +122,13 @@
 
 ### Tests for User Story 3 (MANDATORY - TDD) ⚠️
 
-- [x] T042 [P] [US3] Unit tests for each `BztError` variant display format in `src/engine/mod.rs` (test_not_implemented_display, test_validation_display, test_sla_violation_display, test_env_error_display exist)
+- [x] T042 [P] [US3] Unit tests for each `PummelError` variant display format in `src/engine/mod.rs` (test_not_implemented_display, test_validation_display, test_sla_violation_display, test_env_error_display exist)
 - [x] T043 [P] [US3] Unit tests for error context propagation through the pipeline — `tests/error_context_integration.rs` covers parser → translator pipeline with `[CATEGORY]` format and file path assertions
 
 ### Implementation for User Story 3
 
-- [x] T044 [P] [US3] Implement custom `Display` for each `BztError` variant with structured context format (`[CATEGORY] message: details`) in `src/engine/mod.rs`
-- [x] T045 [P] [US3] Add `source()` implementation for `BztError::Serde` — added `#[source] source: Option<Box<dyn Error + Send + 'static>>` to Serde variant; JSON and TOML errors carry source; serde_yaml limited to `None` (error type lacks `Send`)
+- [x] T044 [P] [US3] Implement custom `Display` for each `PummelError` variant with structured context format (`[CATEGORY] message: details`) in `src/engine/mod.rs`
+- [x] T045 [P] [US3] Add `source()` implementation for `PummelError::Serde` — added `#[source] source: Option<Box<dyn Error + Send + 'static>>` to Serde variant; JSON and TOML errors carry source; serde_yaml limited to `None` (error type lacks `Send`)
 - [x] T046 [US3] Ensure all error messages from parser include file path context in `src/parser/yaml.rs`, `src/parser/json.rs`, `src/parser/toml.rs` — Serde variant carries file_path
 - [x] T047 [US3] Add meaningful INFO logging for error propagation paths — `tracing::info!` at parser selection, attack start/completion in `goose.rs`; `tracing::error!` on execution failure in `goose.rs`; parser error logging in `main.rs`
 
@@ -235,11 +235,11 @@
 
 - **Phase 1** (Setup): No dependencies — can start immediately
 - **Phase 2** (Foundational): Depends on Phase 1 — BLOCKS all user stories
-- **Phase 3** (US1 - CLI Flags): Depends on Phase 2 (BztError for NotImplemented)
-- **Phase 4** (US2 - No-op Modules): Depends on Phase 2 (BztError error returns)
-- **Phase 5** (US3 - Error Messages): Depends on Phase 2 (BztError defined and migrated)
+- **Phase 3** (US1 - CLI Flags): Depends on Phase 2 (PummelError for NotImplemented)
+- **Phase 4** (US2 - No-op Modules): Depends on Phase 2 (PummelError error returns)
+- **Phase 5** (US3 - Error Messages): Depends on Phase 2 (PummelError defined and migrated)
 - **Phase 6** (US4 - Security): Can start after Phase 2 (independent of other US)
-- **Phase 7** (US5 - CLI Reporter): Depends on Phase 2 (BztError in goose.rs)
+- **Phase 7** (US5 - CLI Reporter): Depends on Phase 2 (PummelError in goose.rs)
 - **Phase 8** (US6 - Taurus Fields): Can start after Phase 2 (model changes independent)
 - **Phase 9** (Polish): Depends on all US phases
 
@@ -255,7 +255,7 @@
 ### Parallel Opportunities
 
 - All Phase 1 setup tasks marked [P] can run in parallel
-- All Phase 2 BztError migration tasks marked [P] (T007–T016) can run in parallel (different files)
+- All Phase 2 PummelError migration tasks marked [P] (T007–T016) can run in parallel (different files)
 - US4 (Phase 6, security) and US6 (Phase 8, config model) can run in parallel with US1/US2/US3 once Phase 2 is complete
 - All test tasks within a user story marked [P] can run in parallel
 - Phase 9 polish tasks marked [P] (T076–T084) can all run in parallel
@@ -302,7 +302,7 @@ Task: "Wire DataSourceDefinition into CsvDataSource in src/engine/data_sources.r
 ### MVP First (User Stories 1 + 2 Only)
 
 1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (BztError migration — CRITICAL)
+2. Complete Phase 2: Foundational (PummelError migration — CRITICAL)
 3. Complete Phase 3: US1 (CLI flags) — removes misleading flags
 4. Complete Phase 4: US2 (No-op modules) — env, pacing, SLA work
 5. **STOP and VALIDATE**: Both US1 and US2 independently testable
@@ -322,8 +322,8 @@ Task: "Wire DataSourceDefinition into CsvDataSource in src/engine/data_sources.r
 
 With multiple developers:
 
-1. Team completes Phase 1 + Phase 2 together (BztError migration)
-2. Once BztError is done:
+1. Team completes Phase 1 + Phase 2 together (PummelError migration)
+2. Once PummelError is done:
    - Developer A: US1 (CLI flags) + US5 (CLI reporter)
    - Developer B: US2 (env, pacing, SLA) + US6 (config model)
    - Developer C: US3 (error formatting) + US4 (security hardening)
@@ -340,4 +340,4 @@ With multiple developers:
 - Verify tests fail before implementing (Constitution III)
 - Commit after each task or logical group (Constitution VI)
 - Stop at any checkpoint to validate story independently
-- BztError migration (Phase 2) is the largest single change — it touches every module but each file migration is independent
+- PummelError migration (Phase 2) is the largest single change — it touches every module but each file migration is independent

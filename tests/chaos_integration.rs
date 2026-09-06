@@ -1,7 +1,7 @@
 mod common;
 
-use bzt_rs::engine::goose;
-use bzt_rs::models::config::{
+use pummel::engine::goose;
+use pummel::models::config::{
     ApiConfig, Configuration, DetailedRequest, ExecutionPlan, HttpMethod,
     HTTPRequestDefinition, ScenarioDefinition, ServiceDefinition, SlaAction, SlaCriterion,
     SlaMetric,
@@ -94,7 +94,7 @@ async fn test_chaos_hooks_and_api() {
             pacing: None,
         }],
         scenarios,
-        reporting: vec![bzt_rs::models::config::ReportingDefinition {
+        reporting: vec![pummel::models::config::ReportingDefinition {
             module: "dummy".to_string(), // sets up real-time metrics without connecting to InfluxDB
             filename: None,
             url: None,
@@ -209,5 +209,5 @@ async fn test_chaos_api_control() {
     let run_res = handle.await.unwrap();
     assert!(run_res.is_err());
     let err = run_res.unwrap_err();
-    assert!(matches!(err, bzt_rs::engine::BztError::SlaViolation { .. }));
+    assert!(matches!(err, pummel::engine::PummelError::SlaViolation { .. }));
 }

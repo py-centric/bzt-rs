@@ -26,7 +26,7 @@
 | FR-003 (SLA criteria) | ✅ | T030, T035, T037, T038, T079 | sla.rs + inline refactor |
 | FR-004 (pacing/rps limits) | ✅ | T029, T034, T036, T039 | pacing.rs |
 | FR-005 (contextual errors) | ✅ | T042-T047 | US3 error messages |
-| FR-006 (structured error type) | ✅ | T005-T018 | BztError migration (foundational) |
+| FR-006 (structured error type) | ✅ | T005-T018 | PummelError migration (foundational) |
 | FR-007 (path traversal) | ✅ | T048, T051 | data_sources.rs |
 | FR-008 (file size limit) | ✅ | T049, T052 | data_sources.rs |
 | FR-009 (deny unknown fields) | ✅ | T068, T074 | config model + parser |

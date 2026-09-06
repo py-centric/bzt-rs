@@ -4,23 +4,23 @@
 
 ## Researched Decisions
 
-### 1. BztError Variant Design
+### 1. PummelError Variant Design
 
-**Decision**: Extend `BztError` enum with specific variants covering all error paths.
+**Decision**: Extend `PummelError` enum with specific variants covering all error paths.
 
-**Rationale**: The existing `BztError` has 3 variants all carrying `String` — too generic. Each error path in the codebase maps to a distinct variant with structured context.
+**Rationale**: The existing `PummelError` has 3 variants all carrying `String` — too generic. Each error path in the codebase maps to a distinct variant with structured context.
 
 | Error Source | Current | Proposed Variant | Context Fields |
 |---|---|---|---|
-| File I/O (data_sources, reporting) | `String` (manual) | `BztError::Io(std::io::Error)` | source file, operation |
-| Serde parsing (yaml/json/toml) | `String` (serde error) | `BztError::Serde(String)` | raw error, file path |
-| Goose engine | `String` (map_err) | `BztError::Goose(Box<dyn std::error::Error>)` | wrapped GooseError |
-| Config validation | `BztError::Validation(String)` | `BztError::Validation { field: String, reason: String }` | field name, reason |
-| Mock server | `BztError::Mock(String)` | `BztError::Mock { addr: String, reason: String }` | address, reason |
-| Network/connection | `String` | `BztError::Network(String)` | host, operation |
-| SLA violation | `String` (inline format!) | `BztError::SlaViolation { actual: f32, threshold: f32, metric: String }` | actual, threshold, metric |
-| Internal/unexpected | `BztError::Internal(String)` | unchanged | message |
-| Environment resolution | `String` | `BztError::Environment { var: String, reason: String }` | variable name, reason |
+| File I/O (data_sources, reporting) | `String` (manual) | `PummelError::Io(std::io::Error)` | source file, operation |
+| Serde parsing (yaml/json/toml) | `String` (serde error) | `PummelError::Serde(String)` | raw error, file path |
+| Goose engine | `String` (map_err) | `PummelError::Goose(Box<dyn std::error::Error>)` | wrapped GooseError |
+| Config validation | `PummelError::Validation(String)` | `PummelError::Validation { field: String, reason: String }` | field name, reason |
+| Mock server | `PummelError::Mock(String)` | `PummelError::Mock { addr: String, reason: String }` | address, reason |
+| Network/connection | `String` | `PummelError::Network(String)` | host, operation |
+| SLA violation | `String` (inline format!) | `PummelError::SlaViolation { actual: f32, threshold: f32, metric: String }` | actual, threshold, metric |
+| Internal/unexpected | `PummelError::Internal(String)` | unchanged | message |
+| Environment resolution | `String` | `PummelError::Environment { var: String, reason: String }` | variable name, reason |
 
 **Alternatives considered**: Using `Box<dyn std::error::Error>` as the sole error type (loses structured matching), or a custom error crate (overkill for current scope).
 

@@ -1,4 +1,4 @@
-# Research: bzt-rs Core Architecture
+# Research: pummel Core Architecture
 
 ## Decisions & Rationale
 
@@ -14,7 +14,7 @@
 
 ### 3. Dynamic Task Generation in Goose
 - **Decision**: Use Goose's programmatic API to dynamically register scenarios and tasks at runtime based on the AST.
-- **Rationale**: This allows `bzt-rs` to be a generic runner that doesn't need to be recompiled for different tests. We will map Taurus `execution` blocks to Goose `GooseAttack` parameters and `scenario` blocks to `GooseScenario` builders.
+- **Rationale**: This allows `pummel` to be a generic runner that doesn't need to be recompiled for different tests. We will map Taurus `execution` blocks to Goose `GooseAttack` parameters and `scenario` blocks to `GooseScenario` builders.
 - **Alternatives considered**: Codegen (rejected as non-dynamic).
 
 ### 4. Metrics & Observability

@@ -1,6 +1,6 @@
-project = 'bzt-rs'
-copyright = '2026, bzt-rs contributors'
-author = 'bzt-rs contributors'
+project = 'pummel'
+copyright = '2026, pummel contributors'
+author = 'pummel contributors'
 release = '0.1.0'
 
 extensions = [

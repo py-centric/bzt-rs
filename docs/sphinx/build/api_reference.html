@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>API Reference &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>API Reference &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -34,7 +34,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -50,6 +50,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
@@ -64,7 +65,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -86,27 +87,25 @@
 <h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
 <section id="cli-arguments">
 <h2>CLI Arguments<a class="headerlink" href="#cli-arguments" title="Link to this heading"></a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Usage: bzt-rs [OPTIONS] &lt;CONFIG&gt;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Usage: pummel [OPTIONS] &lt;CONFIG&gt;
 
 Arguments:
   &lt;CONFIG&gt;  Path to the configuration file (.yaml, .json, .toml)
 
 Options:
-      --manager                          Start in Manager mode
-      --worker                           Start in Worker mode
-      --expect-workers &lt;EXPECT_WORKERS&gt;  Number of workers to expect (Manager mode only)
-      --manager-host &lt;MANAGER_HOST&gt;      Host the Manager is listening on (Worker mode only)
-      --manager-port &lt;MANAGER_PORT&gt;      Port the Manager is listening on
-      --metrics                          Enable Prometheus metrics exporter
-      --metrics-port &lt;METRICS_PORT&gt;      Port for the Prometheus metrics exporter [default: 8080]
-      --otel                             Enable OpenTelemetry tracing injection
-  -d, --dry-run                          Validate the configuration and dependencies without executing the test
-  -m, --mock                             Start an internal HTTP mock server based on the configuration
-      --mock-run                         Start the mock server and run the configuration against it
-  -h, --help                             Print help
-  -V, --version                          Print version
+  -d, --dry-run   Validate the configuration and dependencies without
+                  executing the test
+  -m, --mock      Start an internal HTTP mock server based on the
+                  configuration
+      --mock-run  Start the mock server and run the configuration against it
+  -h, --help      Print help
+  -V, --version   Print version
 </pre></div>
 </div>
+<p>The following Taurus CLI flags are <strong>not yet implemented</strong> and have been
+removed from the argument parser: <code class="docutils literal notranslate"><span class="pre">--manager</span></code>, <code class="docutils literal notranslate"><span class="pre">--worker</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--expect-workers</span></code>, <code class="docutils literal notranslate"><span class="pre">--manager-host</span></code>, <code class="docutils literal notranslate"><span class="pre">--manager-port</span></code>, <code class="docutils literal notranslate"><span class="pre">--metrics</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--metrics-port</span></code>, <code class="docutils literal notranslate"><span class="pre">--otel</span></code>.</p>
 </section>
 </section>
 
@@ -120,7 +119,7 @@ Options:
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

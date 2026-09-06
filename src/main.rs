@@ -1,7 +1,7 @@
-use bzt_rs::engine;
-use bzt_rs::engine::BztError;
-use bzt_rs::models::config::Configuration;
-use bzt_rs::normalizer::{SchemaNormalizer, ShorthandConfiguration};
+use pummel::engine;
+use pummel::engine::PummelError;
+use pummel::models::config::Configuration;
+use pummel::normalizer::{SchemaNormalizer, ShorthandConfiguration};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -165,7 +165,7 @@ fn apply_override(root: &mut serde_json::Value, path_str: &str, val_str: &str) -
 }
 
 #[tokio::main]
-async fn main() -> Result<(), BztError> {
+async fn main() -> Result<(), PummelError> {
     let args = Args::parse();
 
     // 1. Process overrides to check if console logging should be disabled
@@ -198,7 +198,7 @@ async fn main() -> Result<(), BztError> {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
     {
         tracing::info!("Parsing YAML config: {}", config_path);
-        let yaml_val: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| BztError::Serde {
+        let yaml_val: serde_yaml::Value = serde_yaml::from_str(&content).map_err(|e| PummelError::Serde {
             message: e.to_string(),
             file_path: Some(config_path.clone()),
             source: None,
@@ -209,7 +209,7 @@ async fn main() -> Result<(), BztError> {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
     {
         tracing::info!("Parsing JSON config: {}", config_path);
-        serde_json::from_str(&content).map_err(|e| BztError::Serde {
+        serde_json::from_str(&content).map_err(|e| PummelError::Serde {
             message: e.to_string(),
             file_path: Some(config_path.clone()),
             source: Some(Box::new(e)),
@@ -221,13 +221,13 @@ async fn main() -> Result<(), BztError> {
         tracing::info!("Parsing TOML config: {}", config_path);
         if let Ok(shorthand) = toml::from_str::<ShorthandConfiguration>(&content) {
             let normalized = SchemaNormalizer::normalize_shorthand(shorthand);
-            serde_json::to_value(&normalized).map_err(|e| BztError::Serde {
+            serde_json::to_value(&normalized).map_err(|e| PummelError::Serde {
                 message: e.to_string(),
                 file_path: Some(config_path.clone()),
                 source: Some(Box::new(e)),
             })?
         } else {
-            let toml_val: toml::Value = toml::from_str(&content).map_err(|e| BztError::Serde {
+            let toml_val: toml::Value = toml::from_str(&content).map_err(|e| PummelError::Serde {
                 message: e.to_string(),
                 file_path: Some(config_path.clone()),
                 source: Some(Box::new(e)),
@@ -236,7 +236,7 @@ async fn main() -> Result<(), BztError> {
         }
     } else {
         tracing::error!("Unsupported file format: {}", config_path);
-        return Err(BztError::Validation {
+        return Err(PummelError::Validation {
             field: "file_extension".to_string(),
             reason: "Unsupported file format. Supported: .yaml, .yml, .json, .toml".to_string(),
         });
@@ -262,7 +262,7 @@ async fn main() -> Result<(), BztError> {
     }
 
     // Deserialize into target strongly typed Configuration
-    let config: Configuration = serde_json::from_value(json_val).map_err(|e| BztError::Serde {
+    let config: Configuration = serde_json::from_value(json_val).map_err(|e| PummelError::Serde {
         message: e.to_string(),
         file_path: Some(config_path.clone()),
         source: Some(Box::new(e)),
@@ -291,7 +291,7 @@ async fn main() -> Result<(), BztError> {
         #[cfg(not(feature = "grpc"))]
         {
             let _ = config;
-            return Err(BztError::Internal(
+            return Err(PummelError::Internal(
                 "Mock server requires the 'grpc' feature".to_string(),
             ));
         }
@@ -305,12 +305,12 @@ async fn main() -> Result<(), BztError> {
             let host_override = format!("http://{}", addrs.http_addr);
 
             let attack =
-                bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None)
+                pummel::translator::StateTranslator::translate(&config, Some(host_override), None)
                     .await?;
             let _stats = attack
                 .execute()
                 .await
-                .map_err(|e| BztError::Goose(Box::new(e)))?;
+                .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
             println!("Integrated mock run complete.");
             return Ok(());
@@ -318,7 +318,7 @@ async fn main() -> Result<(), BztError> {
         #[cfg(not(feature = "grpc"))]
         {
             let _ = config;
-            return Err(BztError::Internal(
+            return Err(PummelError::Internal(
                 "Mock run requires the 'grpc' feature".to_string(),
             ));
         }

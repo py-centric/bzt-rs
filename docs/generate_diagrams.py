@@ -49,11 +49,11 @@ def create_folders():
 # ==========================================
 def generate_master_interaction_map(output_path):
     graph_attr = {"nodesep": "0.8", "ranksep": "0.8"}
-    with Diagram("bzt-rs Architecture Interaction Map", 
+    with Diagram("pummel Architecture Interaction Map", 
                  filename=os.path.join(output_path, "01_Core_Architecture/master_map"),
                  show=False, direction="TB", graph_attr=graph_attr):
         user = User("Performance Engineer")
-        with Cluster("bzt-rs CLI"):
+        with Cluster("pummel CLI"):
             cli = Rust("CLI (main.rs)")
             parser = Server("Multi-Format Parser")
             normalizer = Server("Schema Normalizer")
@@ -106,7 +106,7 @@ def generate_sc_dry_run_logic(output_path):
                  filename=os.path.join(output_path, "02_Use_Cases/sc_dry_run_detail"),
                  show=False, direction="TB", graph_attr=graph_attr):
         
-        user = User("User (bzt-rs --dry-run)")
+        user = User("User (pummel --dry-run)")
         
         with Cluster("Validation Pipeline"):
             syntax = Server("1. Syntax Check\n(YAML/JSON/TOML)")
@@ -246,7 +246,7 @@ def generate_multi_cloud_topologies(output_path):
     with Diagram("Deployment: AWS Distributed Topology", 
                  filename=os.path.join(output_path, "05_Cloud_Deployments/aws_topology"),
                  show=False):
-        eks = EKS("bzt-rs Controller (EKS)")
+        eks = EKS("pummel Controller (EKS)")
         workers = [EKS("Worker 1"), EKS("Worker 2")]
         target = Server("Target AWS App")
         eks >> workers >> target
@@ -256,7 +256,7 @@ def generate_multi_cloud_topologies(output_path):
     with Diagram("Deployment: GCP Distributed Topology", 
                  filename=os.path.join(output_path, "05_Cloud_Deployments/gcp_topology"),
                  show=False):
-        gke = GKE("bzt-rs Controller (GKE)")
+        gke = GKE("pummel Controller (GKE)")
         workers = [GKE("Worker 1"), GKE("Worker 2")]
         target = Server("Target GCP App")
         gke >> workers >> target
@@ -266,7 +266,7 @@ def generate_multi_cloud_topologies(output_path):
     with Diagram("Deployment: Azure Distributed Topology", 
                  filename=os.path.join(output_path, "05_Cloud_Deployments/azure_topology"),
                  show=False):
-        aks = AKS("bzt-rs Controller (AKS)")
+        aks = AKS("pummel Controller (AKS)")
         workers = [AKS("Worker 1"), AKS("Worker 2")]
         target = Server("Target Azure App")
         aks >> workers >> target
@@ -279,7 +279,7 @@ def generate_deployment_aws_strategies(output_path):
                  show=False):
         user = User("DevOps")
         with Cluster("AWS Cloud"):
-            invoker = Lambda("bzt-rs Invoker")
+            invoker = Lambda("pummel Invoker")
             lambdas = [Lambda("Worker 1"), Lambda("Worker 2"), Lambda("Worker 3")]
             target = Server("Target System")
             user >> invoker >> lambdas >> Edge(color="red") >> target
@@ -301,7 +301,7 @@ def generate_deployment_gcp_strategies(output_path):
                  show=False):
         user = User("DevOps")
         with Cluster("GCP Project"):
-            invoker = GCF("bzt-rs Invoker")
+            invoker = GCF("pummel Invoker")
             functions = [GCF("Worker 1"), GCF("Worker 2"), GCF("Worker 3")]
             target = Server("Target System")
             user >> invoker >> functions >> Edge(color="red") >> target
@@ -323,7 +323,7 @@ def generate_deployment_azure_strategies(output_path):
                  show=False):
         user = User("DevOps")
         with Cluster("Azure Subscription"):
-            invoker = FunctionApps("bzt-rs Invoker")
+            invoker = FunctionApps("pummel Invoker")
             functions = [FunctionApps("Worker 1"), FunctionApps("Worker 2"), FunctionApps("Worker 3")]
             target = Server("Target System")
             user >> invoker >> functions >> Edge(color="red") >> target
@@ -339,7 +339,7 @@ def generate_deployment_azure_strategies(output_path):
             user >> lb >> nodes >> Edge(color="red") >> target
 
 if __name__ == "__main__":
-    print("Starting bzt-rs exhaustive diagram generation...")
+    print("Starting pummel exhaustive diagram generation...")
     output_dir = create_folders()
     print(f"Output directory initialized at: {output_dir}")
     
@@ -363,6 +363,6 @@ if __name__ == "__main__":
                 if file.endswith(".png"):
                     print(f"  [CREATED] {os.path.join(root, file)}")
         
-        print(f"\nSuccess! bzt-rs diagrams updated in '{output_dir}'.")
+        print(f"\nSuccess! pummel diagrams updated in '{output_dir}'.")
     except Exception as e:
         print(f"Error generating diagrams: {e}")

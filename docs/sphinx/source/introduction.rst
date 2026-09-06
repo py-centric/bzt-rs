@@ -1,7 +1,7 @@
 Introduction
 ============
 
-bzt-rs is a high-performance, Rust-based load testing runner that interprets
+pummel is a high-performance, Rust-based load testing runner that interprets
 industry-standard Taurus configurations and a simplified native shorthand,
 executing them using the Goose load engine. It is designed to bring the ease
 of declarative performance testing to the Rust ecosystem with minimal
@@ -9,10 +9,10 @@ resource overhead and maximum reliability.
 
 Core Vision
 -----------
-The vision for bzt-rs is to provide a zero-dependency, single-binary execution
+The vision for pummel is to provide a zero-dependency, single-binary execution
 engine that scales from simple local tests to complex CI/CD pipelines.
 By combining the user-friendly YAML/JSON/TOML syntax of Taurus with the
-unparalleled performance of Rust and the Goose engine, bzt-rs offers a
+unparalleled performance of Rust and the Goose engine, pummel offers a
 modern alternative for performance engineering.
 
 Design Principles
@@ -25,7 +25,7 @@ Design Principles
   JSON, or TOML, focusing on "what" to test rather than "how" to implement it.
 
 * **High Performance**: Leveraging Rust's memory safety and zero-cost
-  abstractions, bzt-rs maintains a runtime overhead of < 5% compared to native
+  abstractions, pummel maintains a runtime overhead of < 5% compared to native
   Goose implementations.
 
 * **Reliability-First**: Robust error handling with structured error types,
@@ -37,7 +37,7 @@ Design Principles
 
 System Architecture
 -------------------
-The bzt-rs system is built around a modular pipeline that processes
+The pummel system is built around a modular pipeline that processes
 configuration files into an executable load test:
 
 1. **Multi-Format Parser**: Deserializes input files (YAML, JSON, TOML) into

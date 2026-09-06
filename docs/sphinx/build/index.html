@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bzt-rs: High-Performance Taurus Runner in Rust &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>pummel: High-Performance Taurus Runner in Rust &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -34,7 +34,7 @@
           
           
           <a href="#" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -50,6 +50,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
@@ -61,7 +62,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">bzt-rs</a>
+          <a href="#">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -69,7 +70,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">bzt-rs: High-Performance Taurus Runner in Rust</li>
+      <li class="breadcrumb-item active">pummel: High-Performance Taurus Runner in Rust</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -79,8 +80,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="bzt-rs-high-performance-taurus-runner-in-rust">
-<h1>bzt-rs: High-Performance Taurus Runner in Rust<a class="headerlink" href="#bzt-rs-high-performance-taurus-runner-in-rust" title="Link to this heading"></a></h1>
+  <section id="pummel-high-performance-taurus-runner-in-rust">
+<h1>pummel: High-Performance Taurus Runner in Rust<a class="headerlink" href="#pummel-high-performance-taurus-runner-in-rust" title="Link to this heading"></a></h1>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
@@ -102,30 +103,39 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#format-support">Format Support</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#schema-normalization">Schema Normalization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#core-configuration-parameters">Core Configuration Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#taurus-yaml-standard">Taurus YAML (Standard)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#native-shorthand-toml">Native Shorthand (TOML)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#advanced-configuration">Advanced Configuration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="advanced_features.html#dynamic-data-macros">Dynamic Data &amp; Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#environment-variable-resolution">Environment Variable Resolution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_features.html#data-sources-csv">Data Sources (CSV)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_features.html#variable-extraction-interpolation">Variable Extraction &amp; Interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#dynamic-grpc-reflection-streaming">Dynamic gRPC (Reflection &amp; Streaming)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#websocket-testing">WebSocket Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#real-time-influxdb-observability">Real-time InfluxDB Observability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_features.html#control-flow-conditions-loops">Control Flow: Conditions &amp; Loops</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_features.html#sla-pass-fail-criteria">SLA &amp; Pass/Fail Criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#security-features">Security Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#cli-reporter">CLI Reporter</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#architecture-overview">Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#shell-hook-services">Shell Hook Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#real-time-sla-breach-actions">Real-Time SLA Breach Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#dynamic-control-api">Dynamic Control API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#complete-chaos-engineering-example">Complete Chaos Engineering Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chaos_engineering.html#integration-with-ci-cd">Integration with CI/CD</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#manager-worker-architecture">Manager/Worker Architecture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#setting-up-the-manager">Setting Up the Manager</a></li>
-<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#setting-up-the-workers">Setting Up the Workers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#network-requirements">Network Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#communication-protocol">Communication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="distributed_mode.html#current-capabilities">Current Capabilities</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="example.html#the-scenario">The Scenario</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example.html#full-configuration-ecommerce-test-yaml">Full Configuration (<cite>ecommerce_test.yaml</cite>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html#full-configuration-ecommerce-test-yaml">Full Configuration (<code class="docutils literal notranslate"><span class="pre">ecommerce_test.yaml</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example.html#step-by-step-breakdown">Step-by-Step Breakdown</a></li>
 </ul>
 </li>
@@ -137,19 +147,37 @@
 </div>
 <section id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
-<p>bzt-rs is a comprehensive execution engine that interprets industry-standard Taurus
+<p>pummel is a comprehensive execution engine that interprets industry-standard Taurus
 configurations and a simplified native shorthand, executing them using the
 high-performance, Rust-based Goose framework.</p>
 </section>
 <section id="key-features">
 <h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
 <ul class="simple">
+<li><p><strong>Multi-Protocol Support</strong>: Native support for HTTP/S, WebSockets, and dynamic gRPC.</p></li>
+<li><p><strong>Dynamic gRPC Reflection</strong>: Service discovery at runtime without pre-compiled protos.</p></li>
+<li><p><strong>Real-time Observability</strong>: Metrics shipping to InfluxDB with worker-level synchronization.</p></li>
 <li><p><strong>Multi-Format Parsing</strong>: Deserializes configuration files (.yaml, .json, .toml).</p></li>
 <li><p><strong>Schema Normalizer</strong>: Unifies Shorthand and Taurus schemas.</p></li>
 <li><p><strong>State Translator</strong>: Maps execution bounds to Goose configurations.</p></li>
 <li><p><strong>Dynamic Task Engine</strong>: Evaluates dynamic data, macros, and control flow.</p></li>
-<li><p><strong>Metrics Exporter</strong>: Pushes data to Prometheus, BlazeMeter, and JUnit XML.</p></li>
-<li><p><strong>Cluster Coordinator</strong>: Manages distributed load generation.</p></li>
+<li><p><strong>Advanced Extraction</strong>: Captured variables using JSONPath, Regex, and full XPath 2.0.</p></li>
+<li><p><strong>Structured Error Handling</strong>: Typed <code class="docutils literal notranslate"><span class="pre">PummelError</span></code> with context, file paths,
+and source chaining for actionable diagnostics.</p></li>
+<li><p><strong>Security Hardening</strong>: Path traversal prevention, 100MB file size limits,
+sensitive env var masking, <code class="docutils literal notranslate"><span class="pre">deny_unknown_fields</span></code> on config structs.</p></li>
+<li><p><strong>Environment &amp; Pacing</strong>: <code class="docutils literal notranslate"><span class="pre">${env.VAR}</span></code> resolution with priority chain,
+fixed-rate and randomized throughput enforcement.</p></li>
+<li><p><strong>SLA Evaluation</strong>: Pass/fail criteria with Stop/Warn/Continue actions
+(fail-rate, average response time, p90/p95/p99, throughput).</p></li>
+<li><p><strong>Chaos Engineering Support</strong>: Native lifecycle hooks (<code class="docutils literal notranslate"><span class="pre">services</span></code> block)
+for chaos injection/cleanup with guaranteed shutdown execution.</p></li>
+<li><p><strong>Real-Time SLA Actions</strong>: Background SLA evaluation every 1s with custom
+<code class="docutils literal notranslate"><span class="pre">exec:</span></code> shell commands on breach for automated rollback.</p></li>
+<li><p><strong>Dynamic Control API</strong>: Optional HTTP API (Axum) exposing live metrics
+via <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/metrics</span></code> and graceful abort via <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/control/stop</span></code>.</p></li>
+<li><p><strong>CLI Reporter</strong>: Post-test ASCII summary table with per-endpoint metrics.</p></li>
+<li><p><strong>Reporting</strong>: JUnit XML, HTML, and Real-time InfluxDB output.</p></li>
 </ul>
 </section>
 </section>
@@ -172,7 +200,7 @@ high-performance, Rust-based Goose framework.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

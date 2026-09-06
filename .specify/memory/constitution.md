@@ -9,7 +9,7 @@ Templates requiring updates:
 - ✅ .specify/templates/tasks-template.md
 -->
 
-# bzt-rs Constitution
+# pummel Constitution
 
 ## Core Principles
 

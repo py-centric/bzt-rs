@@ -6,7 +6,7 @@
 
 | Entity | Type | Description |
 |--------|------|-------------|
-| BztError | Enum | Structured error type for all error paths |
+| PummelError | Enum | Structured error type for all error paths |
 | PacingConfig | Struct | Throttling/pacing configuration for an execution plan |
 | DataSourceDefinition | Struct | Structured data source configuration |
 | SlaCriterion | Struct | A single SLA pass/fail condition |
@@ -15,11 +15,11 @@
 
 ---
 
-## BztError (Engine Error Enum)
+## PummelError (Engine Error Enum)
 
 **File**: `src/engine/mod.rs`
 
-The unified error type for all bzt-rs operations. Replaces `Result<(), String>` throughout the codebase.
+The unified error type for all pummel operations. Replaces `Result<(), String>` throughout the codebase.
 
 | Variant | Context Fields | Source |
 |---|---|---|
@@ -34,7 +34,7 @@ The unified error type for all bzt-rs operations. Replaces `Result<(), String>` 
 | `NotImplemented` | `feature: String` | CLI flags for unimplemented features |
 
 **Validation Rules**:
-- ALL error returns must use BztError, never raw String
+- ALL error returns must use PummelError, never raw String
 - `Io` variants must preserve original `std::io::Error` via `#[from]`
 - `Goose` variant must preserve original error via `source` field
 
@@ -153,7 +153,7 @@ The unified error type for all bzt-rs operations. Replaces `Result<(), String>` 
 
 ### Error Flow
 ```
-Error occurs → BztError constructed with context → 
+Error occurs → PummelError constructed with context → 
   ├── Propagated up via `?` operator
   ├── Logged at ERROR level with full context
   └── Displayed to user as actionable message

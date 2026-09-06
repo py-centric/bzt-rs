@@ -1,4 +1,4 @@
-# Specification Quality Checklist: bzt-rs Core Architecture & Roadmap
+# Specification Quality Checklist: pummel Core Architecture & Roadmap
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: April 12, 2026

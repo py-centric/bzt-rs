@@ -6,7 +6,7 @@ CLI Arguments
 
 .. code-block:: text
 
-   Usage: bzt-rs [OPTIONS] <CONFIG>
+   Usage: pummel [OPTIONS] <CONFIG>
 
    Arguments:
      <CONFIG>  Path to the configuration file (.yaml, .json, .toml)

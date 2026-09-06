@@ -1,4 +1,4 @@
-# Data Model: bzt-rs Core
+# Data Model: pummel Core
 
 ## Internal AST Entities
 

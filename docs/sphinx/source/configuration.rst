@@ -1,7 +1,7 @@
 Configuration
 =============
 
-bzt-rs provides a flexible configuration system that supports standard
+pummel provides a flexible configuration system that supports standard
 Taurus YAML and a simplified native Shorthand syntax available in YAML,
 JSON, or TOML.
 
@@ -16,7 +16,7 @@ Format Support
 
 Schema Normalization
 --------------------
-Regardless of the input format, bzt-rs unifies all configurations into a
+Regardless of the input format, pummel unifies all configurations into a
 canonical internal representation. This means you can mix and match
 standard Taurus structures with simplified shorthand where appropriate.
 

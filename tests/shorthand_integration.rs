@@ -1,7 +1,7 @@
 mod common;
 
-use bzt_rs::engine::goose;
-use bzt_rs::normalizer::{SchemaNormalizer, ShorthandConfiguration};
+use pummel::engine::goose;
+use pummel::normalizer::{SchemaNormalizer, ShorthandConfiguration};
 use ntest::timeout;
 use std::io::Write;
 use tempfile::NamedTempFile;

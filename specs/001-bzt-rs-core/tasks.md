@@ -1,6 +1,6 @@
-# Tasks: bzt-rs Core Architecture & Roadmap
+# Tasks: pummel Core Architecture & Roadmap
 
-**Input**: Design documents from `/specs/001-bzt-rs-core/`
+**Input**: Design documents from `/specs/001-pummel-core/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md
 
 **Tests**: As per Constitution Principle III, TDD is MANDATORY. Tests MUST be written and fail before implementation.

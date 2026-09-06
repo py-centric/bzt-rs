@@ -1,12 +1,12 @@
 Installation
 ============
 
-bzt-rs is designed as a standalone binary with zero runtime dependencies.
+pummel is designed as a standalone binary with zero runtime dependencies.
 This makes it incredibly easy to distribute across different environments.
 
 System Prerequisites
 --------------------
-Before building bzt-rs, ensure your system meets the following requirements:
+Before building pummel, ensure your system meets the following requirements:
 
 * **Operating System**: Linux (primary support), macOS, or Windows.
 
@@ -18,14 +18,14 @@ Before building bzt-rs, ensure your system meets the following requirements:
 
 Building from Source
 --------------------
-To build bzt-rs from source, follow these steps:
+To build pummel from source, follow these steps:
 
 
 1. **Clone the Repository**:
    .. code-block:: bash
 
-      git clone https://github.com/py-centric/bzt-rs.git
-      cd bzt-rs
+      git clone https://github.com/py-centric/pummel.git
+      cd pummel
 
 
 2. **Run a Full Build**:
@@ -35,10 +35,10 @@ To build bzt-rs from source, follow these steps:
 
 
 3. **Verify the Installation**:
-   The binary is generated at `target/release/bzt-rs`. Check the version:
+   The binary is generated at `target/release/pummel`. Check the version:
    .. code-block:: bash
 
-      ./target/release/bzt-rs --version
+      ./target/release/pummel --version
 
 Optimizing the Build
 --------------------
@@ -55,12 +55,12 @@ For maximum performance during load generation, use the following build options:
 
 Docker Installation
 -------------------
-If you prefer to run bzt-rs in a containerized environment:
+If you prefer to run pummel in a containerized environment:
 
 .. code-block:: bash
 
-   docker build -t bzt-rs .
-   docker run --rm bzt-rs --help
+   docker build -t pummel .
+   docker run --rm pummel --help
 
 Common Build Issues
 -------------------

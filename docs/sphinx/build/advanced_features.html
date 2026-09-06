@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advanced Features &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>Advanced Features &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -22,7 +22,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Distributed Mode" href="distributed_mode.html" />
+    <link rel="next" title="Chaos Engineering" href="chaos_engineering.html" />
     <link rel="prev" title="Configuration" href="configuration.html" /> 
 </head>
 
@@ -35,7 +35,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -52,12 +52,19 @@
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Features</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#dynamic-data-macros">Dynamic Data &amp; Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variable-resolution">Environment Variable Resolution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#data-sources-csv">Data Sources (CSV)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#variable-extraction-interpolation">Variable Extraction &amp; Interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-grpc-reflection-streaming">Dynamic gRPC (Reflection &amp; Streaming)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#websocket-testing">WebSocket Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#real-time-influxdb-observability">Real-time InfluxDB Observability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#control-flow-conditions-loops">Control Flow: Conditions &amp; Loops</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#sla-pass-fail-criteria">SLA &amp; Pass/Fail Criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-features">Security Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cli-reporter">CLI Reporter</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
@@ -69,7 +76,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -89,7 +96,7 @@
              
   <section id="advanced-features">
 <h1>Advanced Features<a class="headerlink" href="#advanced-features" title="Link to this heading"></a></h1>
-<p>bzt-rs provides robust mechanisms for building complex, realistic
+<p>pummel provides robust mechanisms for building complex, realistic
 performance tests that mirror real-world user behavior.</p>
 <section id="dynamic-data-macros">
 <h2>Dynamic Data &amp; Macros<a class="headerlink" href="#dynamic-data-macros" title="Link to this heading"></a></h2>
@@ -98,8 +105,25 @@ performance tests that mirror real-world user behavior.</p>
 <li><p><strong>${faker.email}</strong>: Generates a random email address.</p></li>
 <li><p><strong>${faker.name}</strong>: Generates a random full name.</p></li>
 <li><p><strong>${uuid}</strong>: Generates a unique UUID v4.</p></li>
-<li><p><strong>${env.MY_VAR}</strong>: Injects the value of the <cite>MY_VAR</cite> environment variable.</p></li>
+<li><p><strong>${env.MY_VAR}</strong>: Injects the value of the <code class="docutils literal notranslate"><span class="pre">MY_VAR</span></code> environment variable.
+Sensitive variable patterns (<code class="docutils literal notranslate"><span class="pre">AWS_*</span></code>, <code class="docutils literal notranslate"><span class="pre">SECRET*</span></code>, <code class="docutils literal notranslate"><span class="pre">KEY</span></code>, <code class="docutils literal notranslate"><span class="pre">TOKEN</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PASSWORD</span></code>, <code class="docutils literal notranslate"><span class="pre">PRIVATE*</span></code>, <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code>, <code class="docutils literal notranslate"><span class="pre">DB_*</span></code>) are automatically
+masked in log output as <code class="docutils literal notranslate"><span class="pre">[REDACTED]</span></code>.</p></li>
 </ul>
+</section>
+<section id="environment-variable-resolution">
+<h2>Environment Variable Resolution<a class="headerlink" href="#environment-variable-resolution" title="Link to this heading"></a></h2>
+<p>Environment variables are resolved with the following priority chain
+(highest to lowest):</p>
+<ol class="arabic simple">
+<li><p>CLI argument overrides</p></li>
+<li><p>System environment variables</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.env</span></code> file from project root or <code class="docutils literal notranslate"><span class="pre">config/settings.env</span></code></p></li>
+<li><p>Default values in configuration</p></li>
+</ol>
+<p>Before test execution, all <code class="docutils literal notranslate"><span class="pre">${env.VAR}</span></code> references in the configuration
+are scanned for sensitive patterns. A warning is emitted for each match,
+but the actual value is still resolved (only log output is masked).</p>
 </section>
 <section id="data-sources-csv">
 <h2>Data Sources (CSV)<a class="headerlink" href="#data-sources-csv" title="Link to this heading"></a></h2>
@@ -111,9 +135,11 @@ performance tests that mirror real-world user behavior.</p>
 <span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/login</span>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
-<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;{&quot;user&quot;:</span><span class="nv"> </span><span class="s">&quot;${username}&quot;,</span><span class="nv"> </span><span class="s">&quot;pass&quot;:</span><span class="nv"> </span><span class="s">&quot;${password}&quot;}&#39;</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">'{"user":</span><span class="nv"> </span><span class="s">"${username}",</span><span class="nv"> </span><span class="s">"pass":</span><span class="nv"> </span><span class="s">"${password}"}'</span>
 </pre></div>
 </div>
+<p>Data sources can be specified as a simple path or a structured definition
+with custom delimiter, quoting, and looping behavior (see <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>).</p>
 </section>
 <section id="variable-extraction-interpolation">
 <h2>Variable Extraction &amp; Interpolation<a class="headerlink" href="#variable-extraction-interpolation" title="Link to this heading"></a></h2>
@@ -127,7 +153,13 @@ performance tests that mirror real-world user behavior.</p>
 </li>
 <li><p><strong>Regex Extraction</strong>:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">extract-regexp</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;id=([0-9]+)&quot;</span>
+<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="s">"id=([0-9]+)"</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>XPath 2.0 Extraction</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">extract-xpath</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">item_count</span><span class="p">:</span><span class="w"> </span><span class="s">"//inventory/item/@count"</span>
 </pre></div>
 </div>
 </li>
@@ -140,22 +172,77 @@ performance tests that mirror real-world user behavior.</p>
 </pre></div>
 </div>
 </section>
+<section id="dynamic-grpc-reflection-streaming">
+<h2>Dynamic gRPC (Reflection &amp; Streaming)<a class="headerlink" href="#dynamic-grpc-reflection-streaming" title="Link to this heading"></a></h2>
+<p>pummel provides advanced, dynamic support for gRPC without requiring pre-compiled
+proto files. By leveraging gRPC Reflection, the engine discovers service schemas
+at runtime.</p>
+<ul class="simple">
+<li><p><strong>Unary gRPC</strong>: Standard request/response calls.</p></li>
+<li><p><strong>Server-side Streaming</strong>: Processes a stream of response messages, executing
+assertions and extraction rules against <em>every</em> frame.</p></li>
+</ul>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">grpc-test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grpc://localhost:50051</span>
+<span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grpc</span>
+<span class="w">      </span><span class="nt">method-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my.pkg.Service/GetStream</span>
+<span class="w">      </span><span class="nt">grpc-mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">server-streaming</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">'{"id":</span><span class="nv"> </span><span class="s">"123"}'</span>
+<span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"STATUS_OK"</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="websocket-testing">
+<h2>WebSocket Testing<a class="headerlink" href="#websocket-testing" title="Link to this heading"></a></h2>
+<p>Full support for bidirectional text-based WebSockets. You can initiate connections,
+send messages, and verify asynchronous responses.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ws-test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ws://localhost:8080/chat</span>
+<span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">websocket</span>
+<span class="w">      </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">"Hello</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">pummel"</span>
+<span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"Welcome"</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="real-time-influxdb-observability">
+<h2>Real-time InfluxDB Observability<a class="headerlink" href="#real-time-influxdb-observability" title="Link to this heading"></a></h2>
+<p>Ship metrics to InfluxDB in real-time during the test run. Each worker node in
+a distributed test is uniquely identified via a <code class="docutils literal notranslate"><span class="pre">worker_id</span></code> tag, ensuring
+accurate data aggregation in Grafana dashboards.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">reporting</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">influxdb</span>
+<span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://influxdb:8086</span>
+<span class="w">  </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test_metrics</span>
+<span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${env.INFLUX_TOKEN}</span>
+<span class="w">  </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10s</span><span class="w">  </span><span class="c1"># Push metrics every 10 seconds</span>
+</pre></div>
+</div>
+</section>
 <section id="control-flow-conditions-loops">
 <h2>Control Flow: Conditions &amp; Loops<a class="headerlink" href="#control-flow-conditions-loops" title="Link to this heading"></a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">if</span></code> and <code class="docutils literal notranslate"><span class="pre">loop</span></code> directives on requests for conditional and polling
+behavior:</p>
 <ul>
-<li><p><strong>Conditional Execution (`if`)</strong>:
-Execute a request only if a condition is met.</p>
+<li><p><strong>Conditional Execution (``if``)</strong>: Only execute the request if the
+condition evaluates to true.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">requests</span><span class="p">:</span>
-<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/special</span>
-<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${id}&quot;</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/admin</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">"${role}"</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== "admin"</span>
 </pre></div>
 </div>
 </li>
-<li><p><strong>Polling Loops (`loop`)</strong>:
-Repeatedly execute a request until a condition is satisfied.</p>
+<li><p><strong>Polling Loops (``loop``)</strong>:
+Repeatedly execute a request until a condition is satisfied. Supports numeric
+comparisons and boolean logic.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">requests</span><span class="p">:</span>
 <span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/status</span>
-<span class="w">  </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${status}&quot;</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== &quot;processing&quot;</span>
+<span class="w">  </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">"${status}"</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== "processing" || "${count}" &lt; 5</span>
 </pre></div>
 </div>
 </li>
@@ -163,14 +250,81 @@ Repeatedly execute a request until a condition is satisfied.</p>
 </section>
 <section id="sla-pass-fail-criteria">
 <h2>SLA &amp; Pass/Fail Criteria<a class="headerlink" href="#sla-pass-fail-criteria" title="Link to this heading"></a></h2>
-<p>Define success thresholds for your load test.</p>
+<p>Define structured success thresholds for your load test:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">reporting</span><span class="p">:</span>
-<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passfail</span>
-<span class="w">  </span><span class="nt">criteria</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-rt of scenario &gt; 500ms for 10s, continue as failed</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail of scenario &gt; 1% for 30s, stop as failed</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">junit-xml</span>
+<span class="w">  </span><span class="nt">filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">results.xml</span>
+<span class="w">  </span><span class="nt">failed-threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">  </span><span class="nt">sla</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail-rate</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5000.0</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000.0</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/login</span>
+<span class="w">    </span><span class="nt">duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn</span>
 </pre></div>
 </div>
+<p>Supported metrics:</p>
+<ul class="simple">
+<li><p><strong>fail-rate</strong>: Ratio of failed requests to total (0.0 to 1.0).</p></li>
+<li><p><strong>avg-response-time</strong>: Average response time in milliseconds.</p></li>
+<li><p><strong>p90-response-time</strong>: 90th percentile response time (ms).</p></li>
+<li><p><strong>p95-response-time</strong>: 95th percentile response time (ms).</p></li>
+<li><p><strong>p99-response-time</strong>: 99th percentile response time (ms).</p></li>
+<li><p><strong>throughput</strong>: Requests per second.</p></li>
+</ul>
+<p>Each SLA criterion supports:</p>
+<ul class="simple">
+<li><p><strong>metric</strong> (required): Which metric to evaluate.</p></li>
+<li><p><strong>threshold</strong> (required): Threshold value for the metric.</p></li>
+<li><p><strong>subject</strong> (optional): Specific request or scenario to scope the criterion.</p></li>
+<li><p><strong>duration</strong> (optional): Evaluation window duration string.</p></li>
+<li><p><strong>action</strong> (optional): Action on breach — <code class="docutils literal notranslate"><span class="pre">stop</span></code> (halt test), <code class="docutils literal notranslate"><span class="pre">warn</span></code>
+(log warning), <code class="docutils literal notranslate"><span class="pre">continue</span></code> (record and continue). Default: <code class="docutils literal notranslate"><span class="pre">stop</span></code>.</p></li>
+</ul>
+</section>
+<section id="security-features">
+<h2>Security Features<a class="headerlink" href="#security-features" title="Link to this heading"></a></h2>
+<p>pummel includes several security hardening measures:</p>
+<ul class="simple">
+<li><p><strong>Path Traversal Prevention</strong>: All file paths (data sources, body files)
+are canonicalized and checked against the project root. Paths containing
+<code class="docutils literal notranslate"><span class="pre">../</span></code> or equivalent traversal sequences are rejected with a warning.</p></li>
+<li><p><strong>File Size Limits</strong>: Data source files are checked against a 100MB
+maximum before reading. Files exceeding this limit are rejected.</p></li>
+<li><p><strong>Unknown Field Rejection</strong>: Configuration structs use
+<code class="docutils literal notranslate"><span class="pre">#[serde(deny_unknown_fields)]</span></code> to reject unrecognized YAML/JSON/TOML
+fields at deserialization time, preventing silent misconfiguration.</p></li>
+<li><p><strong>Localhost Mock Binding</strong>: The built-in mock server binds to
+<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> instead of <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> to prevent external access.</p></li>
+<li><p><strong>Sensitive Env Var Masking</strong>: Environment variable values matching
+known sensitive patterns (<code class="docutils literal notranslate"><span class="pre">AWS_*</span></code>, <code class="docutils literal notranslate"><span class="pre">SECRET*</span></code>, <code class="docutils literal notranslate"><span class="pre">KEY</span></code>, <code class="docutils literal notranslate"><span class="pre">TOKEN</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PASSWORD</span></code>, <code class="docutils literal notranslate"><span class="pre">PRIVATE*</span></code>, <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code>, <code class="docutils literal notranslate"><span class="pre">DB_*</span></code>) are masked with
+<code class="docutils literal notranslate"><span class="pre">[REDACTED]</span></code> in all log output.</p></li>
+</ul>
+</section>
+<section id="cli-reporter">
+<h2>CLI Reporter<a class="headerlink" href="#cli-reporter" title="Link to this heading"></a></h2>
+<p>After every test run, pummel outputs a terminal summary table:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>==========================================================================================
+  PUMMEL LOAD TEST SUMMARY
+==========================================================================================
+  Duration: 60s  |  Max Users: 10  |  Total Requests: 600  |  Failures: 0 (0.0%)
+------------------------------------------------------------------------------------------
+  Method   Path                                     Requests    Fails    Avg(ms)  p95(ms)  p99(ms)
+------------------------------------------------------------------------------------------
+  GET      /api/status                                300        0        32.0     85.0    120.0
+  POST     /api/login                                 300        0        58.0    150.0    250.0
+------------------------------------------------------------------------------------------
+</pre></div>
+</div>
+<p>The report includes per-endpoint breakdowns of request count, failure count,
+average latency, and p95/p99 latency percentiles, sorted by request count.</p>
 </section>
 </section>
 
@@ -179,13 +333,13 @@ Repeatedly execute a request until a condition is satisfied.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="distributed_mode.html" class="btn btn-neutral float-right" title="Distributed Mode" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="chaos_engineering.html" class="btn btn-neutral float-right" title="Chaos Engineering" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

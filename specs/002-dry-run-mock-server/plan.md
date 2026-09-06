@@ -5,7 +5,7 @@
 
 ## Summary
 
-Implement configuration validation (`--dry-run`) and a dynamic HTTP mock server (`--mock`, `--mock-run`) for `bzt-rs`. The technical approach involves stopping the execution pipeline after the translation phase for dry-runs, and using `axum` to host a dynamic, assertion-based mock server that simulates backend responses for functional testing of load test scenarios.
+Implement configuration validation (`--dry-run`) and a dynamic HTTP mock server (`--mock`, `--mock-run`) for `pummel`. The technical approach involves stopping the execution pipeline after the translation phase for dry-runs, and using `axum` to host a dynamic, assertion-based mock server that simulates backend responses for functional testing of load test scenarios.
 
 ## Technical Context
 

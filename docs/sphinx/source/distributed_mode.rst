@@ -13,12 +13,12 @@ Distributed Mode
 Current Capabilities
 --------------------
 
-For the current release, bzt-rs focuses on single-node load generation.
+For the current release, pummel focuses on single-node load generation.
 To generate load from a single machine:
 
 .. code-block:: bash
 
-   ./bzt-rs test.yaml
+   ./pummel test.yaml
 
 See the :doc:`quickstart` for common usage patterns and the
 :doc:`configuration` reference for available options.

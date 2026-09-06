@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use csv::Reader;
 use std::collections::HashMap;
 use std::fs::File;
@@ -9,15 +9,15 @@ const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100MB
 /// Validates a file path for security: rejects path traversal and non-existent files.
 /// Returns the canonicalized path if valid.
 #[allow(clippy::missing_errors_doc)]
-pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, BztError> {
+pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, PummelError> {
     let path_ref = path.as_ref();
-    let canonical = path_ref.canonicalize().map_err(|e| BztError::Io {
+    let canonical = path_ref.canonicalize().map_err(|e| PummelError::Io {
         source: e,
         context: format!("Failed to resolve path '{}'", path_ref.display()),
     })?;
 
     // Get the project root (where Cargo.toml lives) as the allowed base
-    let project_root = std::env::current_dir().map_err(|e| BztError::Io {
+    let project_root = std::env::current_dir().map_err(|e| PummelError::Io {
         source: e,
         context: "Failed to determine project root".to_string(),
     })?;
@@ -30,7 +30,7 @@ pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, BztError> {
             project_root.display()
         );
         tracing::warn!("[SECURITY] Path traversal blocked: {reason}");
-        return Err(BztError::Validation {
+        return Err(PummelError::Validation {
             field: "data-source path".to_string(),
             reason,
         });
@@ -41,8 +41,8 @@ pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, BztError> {
 
 /// Checks that a file does not exceed the maximum allowed size.
 #[allow(clippy::missing_errors_doc)]
-pub fn check_file_size<P: AsRef<Path>>(path: P) -> Result<(), BztError> {
-    let metadata = std::fs::metadata(path.as_ref()).map_err(|e| BztError::Io {
+pub fn check_file_size<P: AsRef<Path>>(path: P) -> Result<(), PummelError> {
+    let metadata = std::fs::metadata(path.as_ref()).map_err(|e| PummelError::Io {
         source: e,
         context: format!("Failed to read metadata for '{}'", path.as_ref().display()),
     })?;
@@ -55,7 +55,7 @@ pub fn check_file_size<P: AsRef<Path>>(path: P) -> Result<(), BztError> {
             MAX_FILE_SIZE,
         );
         tracing::warn!("[SECURITY] File size limit exceeded: {reason}");
-        return Err(BztError::Validation {
+        return Err(PummelError::Validation {
             field: "data-source file size".to_string(),
             reason,
         });
@@ -70,7 +70,7 @@ pub struct CsvDataSource {
 
 impl CsvDataSource {
     #[allow(clippy::missing_errors_doc)]
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BztError> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, PummelError> {
         // Security: validate path first
         let canonical = validate_path(path.as_ref())?;
         // Security: check file size
@@ -82,12 +82,12 @@ impl CsvDataSource {
         let mut rdr = Reader::from_reader(file);
         let headers = rdr
             .headers()
-            .map_err(|e| BztError::Internal(e.to_string()))?
+            .map_err(|e| PummelError::Internal(e.to_string()))?
             .clone();
 
         let mut records = Vec::new();
         for result in rdr.records() {
-            let record = result.map_err(|e| BztError::Internal(e.to_string()))?;
+            let record = result.map_err(|e| PummelError::Internal(e.to_string()))?;
             let mut row = HashMap::new();
             for (i, header) in headers.iter().enumerate() {
                 row.insert(header.to_string(), record.get(i).unwrap_or("").to_string());

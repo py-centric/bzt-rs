@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 #[cfg(feature = "influxdb-reporter")]
 use crate::engine::reporting::InfluxDbReporter;
 use crate::engine::reporting::{CliSummary, JUnitReporter, RealTimeMetrics, Reporter};
@@ -56,7 +56,7 @@ fn run_hooks(services: &[crate::models::config::ServiceDefinition], phase: &str)
 }
 
 #[allow(clippy::missing_errors_doc)]
-pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
+pub async fn run_attack(config: Configuration) -> Result<(), PummelError> {
     run_hooks(&config.services, "prepare");
     run_hooks(&config.services, "startup");
 
@@ -68,7 +68,7 @@ pub async fn run_attack(config: Configuration) -> Result<(), BztError> {
 }
 
 #[allow(clippy::too_many_lines)]
-async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
+async fn run_attack_inner(config: Configuration) -> Result<(), PummelError> {
     tracing::info!(
         "Starting load test with {} scenarios",
         config.scenarios.len()
@@ -242,14 +242,14 @@ async fn run_attack_inner(config: Configuration) -> Result<(), BztError> {
                 Ok(s) => s,
                 Err(e) => {
                     tracing::error!("Goose attack execution failed: {}", e);
-                    return Err(BztError::Goose(Box::new(e)));
+                    return Err(PummelError::Goose(Box::new(e)));
                 }
             }
         }
         reason = abort_rx.recv() => {
             let reason_str = reason.unwrap_or_else(|| "Unknown abort reason".to_string());
             tracing::error!("[ABORT] Load test aborted: {}", reason_str);
-            return Err(BztError::SlaViolation {
+            return Err(PummelError::SlaViolation {
                 metric: "Real-time SLA/API Stop".to_string(),
                 actual: 0.0,
                 threshold: 0.0,

@@ -1,6 +1,6 @@
 use crate::engine::interpolation::Interpolator;
 use crate::engine::macros::MacroEvaluator;
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use std::collections::HashMap;
 
 /// Resolves the request body from either a file or inline definition.
@@ -12,14 +12,14 @@ use std::collections::HashMap;
 ///
 /// # Errors
 ///
-/// Returns `BztError` if path validation, security checks, or macro
+/// Returns `PummelError` if path validation, security checks, or macro
 /// evaluation fails.
 pub(crate) async fn resolve_body(
     body: Option<&str>,
     body_file: Option<&str>,
     variables: &HashMap<String, String>,
     record: Option<&HashMap<String, String>>,
-) -> Result<String, BztError> {
+) -> Result<String, PummelError> {
     let raw = if let Some(bf) = body_file {
         let body_path = MacroEvaluator::evaluate(bf, record)?;
         let canonical = crate::engine::data_sources::validate_path(&body_path)?;

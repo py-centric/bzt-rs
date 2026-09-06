@@ -1,13 +1,13 @@
-# Library API Contract: BztError
+# Library API Contract: PummelError
 
 ## Public Types
 
-### `BztError` (enum)
+### `PummelError` (enum)
 
-The unified error type for all bzt-rs operations. All public API functions return `Result<T, BztError>`.
+The unified error type for all pummel operations. All public API functions return `Result<T, PummelError>`.
 
 ```rust
-pub enum BztError {
+pub enum PummelError {
     Io { source: std::io::Error, context: String },
     Serde { message: String, file_path: Option<String> },
     Goose { source: Box<dyn std::error::Error + Send> },
@@ -32,7 +32,7 @@ Examples:
 
 ## `#[from]` Implementations
 
-- `std::io::Error` → `BztError::Io`
-- `serde_json::Error` → `BztError::Serde`
-- `serde_yaml::Error` → `BztError::Serde`
-- `toml::de::Error` → `BztError::Serde`
+- `std::io::Error` → `PummelError::Io`
+- `serde_json::Error` → `PummelError::Serde`
+- `serde_yaml::Error` → `PummelError::Serde`
+- `toml::de::Error` → `PummelError::Serde`

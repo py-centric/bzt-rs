@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Configuration &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>Configuration &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -35,7 +35,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -53,12 +53,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#format-support">Format Support</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#schema-normalization">Schema Normalization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#core-configuration-parameters">Core Configuration Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#taurus-yaml-standard">Taurus YAML (Standard)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#native-shorthand-toml">Native Shorthand (TOML)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#advanced-configuration">Advanced Configuration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
@@ -70,7 +69,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -90,7 +89,7 @@
              
   <section id="configuration">
 <h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
-<p>bzt-rs provides a flexible configuration system that supports standard
+<p>pummel provides a flexible configuration system that supports standard
 Taurus YAML and a simplified native Shorthand syntax available in YAML,
 JSON, or TOML.</p>
 <section id="format-support">
@@ -103,34 +102,73 @@ JSON, or TOML.</p>
 </section>
 <section id="schema-normalization">
 <h2>Schema Normalization<a class="headerlink" href="#schema-normalization" title="Link to this heading"></a></h2>
-<p>Regardless of the input format, bzt-rs unifies all configurations into a
+<p>Regardless of the input format, pummel unifies all configurations into a
 canonical internal representation. This means you can mix and match
 standard Taurus structures with simplified shorthand where appropriate.</p>
 </section>
 <section id="core-configuration-parameters">
 <h2>Core Configuration Parameters<a class="headerlink" href="#core-configuration-parameters" title="Link to this heading"></a></h2>
-<p>The configuration consists of two primary sections: <cite>execution</cite> and <cite>scenarios</cite>.</p>
-<p>### The <cite>execution</cite> Block
+<p>The configuration consists of two primary sections: <code class="docutils literal notranslate"><span class="pre">execution</span></code> and <code class="docutils literal notranslate"><span class="pre">scenarios</span></code>.</p>
+<p>### The <code class="docutils literal notranslate"><span class="pre">execution</span></code> Block
 Defines “how” the load should be generated:</p>
 <ul class="simple">
 <li><p><strong>concurrency</strong>: The number of concurrent users (threads) to launch.</p></li>
-<li><p><strong>ramp-up</strong>: Time to reach target concurrency (e.g., <cite>10s</cite>, <cite>1m</cite>).</p></li>
-<li><p><strong>hold-for</strong>: Total duration of the test (e.g., <cite>5m</cite>, <cite>1h</cite>).</p></li>
-<li><p><strong>iterations</strong>: Number of times each user should execute the scenario.</p></li>
-<li><p><strong>scenario</strong>: Name of the scenario to execute from the <cite>scenarios</cite> block.</p></li>
+<li><p><strong>ramp-up</strong>: Time to reach target concurrency (e.g., <code class="docutils literal notranslate"><span class="pre">10s</span></code>, <code class="docutils literal notranslate"><span class="pre">1m</span></code>).</p></li>
+<li><p><strong>hold-for</strong>: Total duration of the test (e.g., <code class="docutils literal notranslate"><span class="pre">5m</span></code>, <code class="docutils literal notranslate"><span class="pre">1h</span></code>).</p></li>
+<li><p><strong>scenario</strong>: Name of the scenario to execute from the <code class="docutils literal notranslate"><span class="pre">scenarios</span></code> block.</p></li>
+<li><p><strong>throughput</strong>: Target requests per second (applied as a Goose throttle).</p></li>
+<li><p><strong>pacing</strong>: Structured pacing configuration (see Pacing below).</p></li>
 </ul>
-<p>### The <cite>scenarios</cite> Block
+<p>### The <code class="docutils literal notranslate"><span class="pre">scenarios</span></code> Block
 Defines “what” the load should do:</p>
 <ul class="simple">
-<li><p><strong>requests</strong>: A list of URLs or request objects.</p></li>
-<li><p><strong>data-sources</strong>: CSV files for parameterization.</p></li>
+<li><p><strong>requests</strong>: A list of URLs or detailed request objects.</p></li>
+<li><p><strong>data-sources</strong>: CSV files or structured data source definitions for
+parameterization.</p></li>
 <li><p><strong>variables</strong>: Static or dynamic context for the scenario.</p></li>
-<li><p><strong>think-time</strong>: Delay between requests.</p></li>
+<li><p><strong>think-time</strong>: Delay between requests (e.g., <code class="docutils literal notranslate"><span class="pre">100ms</span></code>, <code class="docutils literal notranslate"><span class="pre">1s-3s</span></code>).</p></li>
+<li><p><strong>headers</strong>: Scenario-level HTTP headers applied to all requests.</p></li>
 </ul>
-</section>
-<section id="taurus-yaml-standard">
-<h2>Taurus YAML (Standard)<a class="headerlink" href="#taurus-yaml-standard" title="Link to this heading"></a></h2>
-<p>A complete, standard Taurus YAML configuration example:</p>
+<p>### Pacing Configuration
+Control the rate at which requests are sent:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paced-test</span>
+<span class="w">  </span><span class="nt">pacing</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w">           </span><span class="c1"># Target requests per period</span>
+<span class="w">    </span><span class="nt">per</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1s</span><span class="w">            </span><span class="c1"># Time period (default: 1s)</span>
+<span class="w">    </span><span class="nt">randomize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># Randomize inter-request timing</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>rate</strong> (required): Target number of requests per time period.</p></li>
+<li><p><strong>per</strong> (optional): Time period string (e.g., <code class="docutils literal notranslate"><span class="pre">1s</span></code>, <code class="docutils literal notranslate"><span class="pre">1m</span></code>). Default: <code class="docutils literal notranslate"><span class="pre">1s</span></code>.</p></li>
+<li><p><strong>randomize</strong> (optional): When <code class="docutils literal notranslate"><span class="pre">true</span></code>, uses exponential distribution for
+more realistic traffic patterns. Default: <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p></li>
+</ul>
+<p>### Data Source Definitions
+Data sources can be specified as a simple path string or a structured object:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">data-test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">data-sources</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users.csv</span><span class="w">               </span><span class="c1"># Simple path (comma-delimited, quoted)</span>
+<span class="w">       </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">products.csv</span><span class="w">      </span><span class="c1"># Structured definition</span>
+<span class="w">         </span><span class="nt">delimiter</span><span class="p">:</span><span class="w"> </span><span class="s">";"</span>
+<span class="w">         </span><span class="nt">quoted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">         </span><span class="nt">loop_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">         </span><span class="nt">ordered</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+<p>Structured fields:</p>
+<ul class="simple">
+<li><p><strong>path</strong> (required): File path to the CSV data source.</p></li>
+<li><p><strong>delimiter</strong> (optional): CSV delimiter character. Default: <code class="docutils literal notranslate"><span class="pre">,</span></code>.</p></li>
+<li><p><strong>quoted</strong> (optional): Whether fields are quoted. Default: <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p></li>
+<li><p><strong>loop_data</strong> (optional): Loop back to start when reaching end. Default: <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p></li>
+<li><p><strong>ordered</strong> (optional): Select records in order (false = by user index). Default: <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p></li>
+</ul>
+<p>### Taurus YAML (Standard)
+A complete, standard Taurus YAML configuration example:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
 <span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">  </span><span class="nt">ramp-up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
@@ -142,24 +180,39 @@ Defines “what” the load should do:</p>
 <span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://example.com/api/login</span>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
-<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;{&quot;username&quot;:</span><span class="nv"> </span><span class="s">&quot;admin&quot;}&#39;</span>
+<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">login</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">'{"username":</span><span class="nv"> </span><span class="s">"admin"}'</span>
+<span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://example.com/api/profile</span>
 </pre></div>
 </div>
-</section>
-<section id="native-shorthand-toml">
-<h2>Native Shorthand (TOML)<a class="headerlink" href="#native-shorthand-toml" title="Link to this heading"></a></h2>
-<p>A more compact shorthand syntax using TOML:</p>
+<p>### Detailed Request Fields
+Each request object supports these fields:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/endpoint</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span><span class="w">                  </span><span class="c1"># GET, POST, PUT, DELETE, PATCH, HEAD</span>
+<span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-request</span><span class="w">            </span><span class="c1"># Human-readable name for metrics</span>
+<span class="w">  </span><span class="nt">headers</span><span class="p">:</span><span class="w">                     </span><span class="c1"># Per-request headers</span>
+<span class="w">    </span><span class="nt">X-Custom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span>
+<span class="w">  </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">'{"key":</span><span class="nv"> </span><span class="s">"value"}'</span><span class="w">     </span><span class="c1"># Inline request body</span>
+<span class="w">  </span><span class="nt">body-file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload.json</span><span class="w">      </span><span class="c1"># Read body from file</span>
+<span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span><span class="w">                 </span><span class="c1"># Request timeout (e.g., 30s, 5000ms)</span>
+<span class="w">  </span><span class="nt">think-time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100ms</span><span class="w">            </span><span class="c1"># Delay after this request</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">"${var}"</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">""</span><span class="w">           </span><span class="c1"># Conditional execution</span>
+<span class="w">  </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">"${status}"</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== "ok"</span><span class="w">    </span><span class="c1"># Polling loop condition</span>
+</pre></div>
+</div>
+<p>### Native Shorthand (TOML)
+A more compact shorthand syntax using TOML:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[execution]</span>
 <span class="n">concurrency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
-<span class="n">ramp-up</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;30s&quot;</span>
-<span class="n">hold-for</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;5m&quot;</span>
-<span class="n">scenario</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;shorthand-test&quot;</span>
+<span class="n">ramp-up</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"30s"</span>
+<span class="n">hold-for</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"5m"</span>
+<span class="n">scenario</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"shorthand-test"</span>
 
 <span class="k">[scenarios.shorthand-test]</span>
 <span class="n">requests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;http://example.com/api/login&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;http://example.com/api/profile&quot;</span>
+<span class="w">    </span><span class="s2">"http://example.com/api/login"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"http://example.com/api/profile"</span>
 <span class="p">]</span>
 </pre></div>
 </div>
@@ -167,7 +220,7 @@ Defines “what” the load should do:</p>
 <section id="advanced-configuration">
 <h2>Advanced Configuration<a class="headerlink" href="#advanced-configuration" title="Link to this heading"></a></h2>
 <p>See the <a class="reference internal" href="advanced_features.html"><span class="doc">Advanced Features</span></a> section for details on extraction,
-assertions, and control flow.</p>
+assertions, control flow, SLA criteria, and security features.</p>
 </section>
 </section>
 
@@ -182,7 +235,7 @@ assertions, and control flow.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

@@ -14,7 +14,7 @@ scenarios:
     think-time: 200ms
     headers:
       Accept: application/json
-      X-Client: bzt-rs-e2e
+      X-Client: pummel-e2e
     data-sources:
       - path: examples/data/users.csv
         delimiter: ","

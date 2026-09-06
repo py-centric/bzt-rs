@@ -1,7 +1,7 @@
 mod common;
 
-use bzt_rs::engine::goose;
-use bzt_rs::models::config::{
+use pummel::engine::goose;
+use pummel::models::config::{
     AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HttpMethod,
     HTTPRequestDefinition, ReportingDefinition, ScenarioDefinition, SlaAction, SlaCriterion,
     SlaMetric,

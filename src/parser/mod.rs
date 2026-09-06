@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::Configuration;
 use std::path::Path;
 
@@ -8,5 +8,5 @@ pub mod yaml;
 
 pub trait Parser {
     #[allow(clippy::missing_errors_doc)]
-    fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, BztError>;
+    fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, PummelError>;
 }

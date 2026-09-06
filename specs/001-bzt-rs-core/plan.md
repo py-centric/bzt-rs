@@ -1,10 +1,10 @@
-# Implementation Plan: bzt-rs Core Architecture & Roadmap
+# Implementation Plan: pummel Core Architecture & Roadmap
 
-**Branch**: `001-bzt-rs-core` | **Date**: 2026-04-12 | **Spec**: [specs/001-bzt-rs-core/spec.md](spec.md)
+**Branch**: `001-pummel-core` | **Date**: 2026-04-12 | **Spec**: [specs/001-pummel-core/spec.md](spec.md)
 
 ## Summary
 
-Implement the core architecture for `bzt-rs`, a Taurus configuration interpreter and runner using the Goose load engine. The technical approach involves building a multi-format parser, a schema normalizer to bridge Taurus and "Shorthand" schemas, and a state translator to map these configurations into Goose's native execution tasks.
+Implement the core architecture for `pummel`, a Taurus configuration interpreter and runner using the Goose load engine. The technical approach involves building a multi-format parser, a schema normalizer to bridge Taurus and "Shorthand" schemas, and a state translator to map these configurations into Goose's native execution tasks.
 
 ## Technical Context
 
@@ -35,7 +35,7 @@ Implement the core architecture for `bzt-rs`, a Taurus configuration interpreter
 ### Documentation (this feature)
 
 ```text
-specs/001-bzt-rs-core/
+specs/001-pummel-core/
 ├── plan.md              # This file
 ├── research.md          # Decision log
 ├── data-model.md        # AST and internal state representation

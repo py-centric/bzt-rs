@@ -1,9 +1,9 @@
-# CLI Contract: bzt-rs
+# CLI Contract: pummel
 
 ## Usage
 
 ```
-bzt-rs [OPTIONS] <CONFIG>
+pummel [OPTIONS] <CONFIG>
 ```
 
 ## Arguments

@@ -4,7 +4,7 @@
     clippy::cast_sign_loss
 )]
 
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::engine::reporting::RealTimeMetrics;
 use crate::models::config::{SlaAction, SlaCriterion, SlaMetric};
 
@@ -51,10 +51,10 @@ impl SlaEngine {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn check_breaches(results: &[SlaResult]) -> Result<(), BztError> {
+    pub fn check_breaches(results: &[SlaResult]) -> Result<(), PummelError> {
         for result in results {
             if !result.passed && result.action == SlaAction::Stop {
-                return Err(BztError::SlaViolation {
+                return Err(PummelError::SlaViolation {
                     metric: format!("{:?}", result.metric),
                     actual: result.actual,
                     threshold: result.threshold,
@@ -207,7 +207,7 @@ mod tests {
         }];
         let err = SlaEngine::check_breaches(&results);
         assert!(err.is_err());
-        assert!(matches!(err.unwrap_err(), BztError::SlaViolation { .. }));
+        assert!(matches!(err.unwrap_err(), PummelError::SlaViolation { .. }));
     }
 
     #[test]

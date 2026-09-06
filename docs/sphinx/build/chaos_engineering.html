@@ -1,0 +1,428 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chaos Engineering &mdash; pummel 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Distributed Mode" href="distributed_mode.html" />
+    <link rel="prev" title="Advanced Features" href="advanced_features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pummel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Chaos Engineering</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#architecture-overview">Architecture Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shell-hook-services">Shell Hook Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#real-time-sla-breach-actions">Real-Time SLA Breach Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-control-api">Dynamic Control API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#complete-chaos-engineering-example">Complete Chaos Engineering Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#integration-with-ci-cd">Integration with CI/CD</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pummel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Chaos Engineering</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/chaos_engineering.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="chaos-engineering">
+<h1>Chaos Engineering<a class="headerlink" href="#chaos-engineering" title="Link to this heading"></a></h1>
+<p>pummel natively supports chaos engineering workflows by combining lifecycle
+hooks, real-time SLA breach actions, and a dynamic HTTP control API. Together,
+these features let you inject faults into a running system, monitor the impact
+against service-level objectives, and automatically trigger rollback or
+remediation logic — all from a single YAML configuration file.</p>
+<section id="architecture-overview">
+<h2>Architecture Overview<a class="headerlink" href="#architecture-overview" title="Link to this heading"></a></h2>
+<p>The following diagram illustrates how the chaos engineering subsystems
+interact during a test run:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>┌──────────────────────────────────────────────────────────────────┐
+│  CLI (pummel config.yml)                                        │
+│                                                                  │
+│   1. Parse config &amp; resolve env vars                             │
+│   2. Execute PREPARE hooks (provision proxies, start sidecars)   │
+│           │                                                      │
+│           ▼                                                      │
+│   3. Execute STARTUP hooks (inject faults / toxics)              │
+│           │                                                      │
+│           ▼                                                      │
+│   4. Launch Goose Engine ───────────────────────────┐            │
+│      (virtual users execute scenarios)              │            │
+│           │                                         │            │
+│           ▼                                         ▼            │
+│   5. Background SLA Checker              6. Control API          │
+│      (evaluates rules every 1s)             GET /metrics         │
+│      breach → exec: command                 POST /control/stop   │
+│           │                                         │            │
+│           ▼                                         │            │
+│   7. Execute SHUTDOWN hooks (tear down proxies) ◄───┘            │
+│      (guaranteed even on crash / abort)                          │
+└──────────────────────────────────────────────────────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="shell-hook-services">
+<h2>Shell Hook Services<a class="headerlink" href="#shell-hook-services" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">services</span></code> configuration block lets you run arbitrary shell commands
+at well-defined lifecycle phases of the test run:</p>
+<ul class="simple">
+<li><p><strong>prepare</strong>: Runs <em>before</em> the load engine starts. Use this to provision
+infrastructure such as proxy instances, chaos agents, or database fixtures.</p></li>
+<li><p><strong>startup</strong>: Runs <em>after</em> prepare completes but <em>before</em> virtual users begin
+executing scenarios. Use this to inject faults, add toxic rules, or flip
+feature flags.</p></li>
+<li><p><strong>shutdown</strong>: Runs <em>after</em> the test completes or is aborted. Shutdown hooks
+are <strong>guaranteed to execute</strong> even when the test is interrupted by a signal
+(<code class="docutils literal notranslate"><span class="pre">SIGINT</span></code> / <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code>), an SLA <code class="docutils literal notranslate"><span class="pre">stop</span></code> action, or an unexpected crash.
+Use this to tear down proxies, remove toxics, and clean up resources.</p></li>
+</ul>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">services</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shell</span>
+<span class="w">  </span><span class="nt">prepare</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli create db_proxy -l 0.0.0.0:13306 -u db-server:3306</span>
+<span class="w">  </span><span class="nt">startup</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli toxic add -t latency -a latency=500 db_proxy</span>
+<span class="w">  </span><span class="nt">shutdown</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli delete db_proxy</span>
+</pre></div>
+</div>
+<p>Each command is executed sequentially within its phase. A non-zero exit code
+in <strong>prepare</strong> or <strong>startup</strong> will abort the test and immediately trigger the
+<strong>shutdown</strong> phase.</p>
+</section>
+<section id="real-time-sla-breach-actions">
+<h2>Real-Time SLA Breach Actions<a class="headerlink" href="#real-time-sla-breach-actions" title="Link to this heading"></a></h2>
+<p>A background thread evaluates SLA rules <strong>every 1 second</strong> against live metrics
+collected from the running test. When a threshold is breached, the configured
+action fires immediately.</p>
+<p>Actions can be one of the built-in keywords or a custom shell command:</p>
+<ul class="simple">
+<li><p><strong>stop</strong>: Halt the test immediately and proceed to shutdown hooks.</p></li>
+<li><p><strong>warn</strong>: Log a warning but continue the test.</p></li>
+<li><p><strong>continue</strong>: Record the breach in the report but take no runtime action.</p></li>
+<li><p><strong>exec:&lt;command&gt;</strong>: Execute an arbitrary shell command. The command string
+after the <code class="docutils literal notranslate"><span class="pre">exec:</span></code> prefix is passed to the system shell.</p></li>
+</ul>
+<p>Supported metrics:</p>
+<ul class="simple">
+<li><p><strong>fail-rate</strong>: Ratio of failed requests to total (0.0 to 1.0).</p></li>
+<li><p><strong>avg-response-time</strong>: Average response time in milliseconds.</p></li>
+<li><p><strong>p90-response-time</strong>: 90th percentile response time (ms).</p></li>
+<li><p><strong>p95-response-time</strong>: 95th percentile response time (ms).</p></li>
+<li><p><strong>p99-response-time</strong>: 99th percentile response time (ms).</p></li>
+<li><p><strong>throughput</strong>: Requests per second.</p></li>
+</ul>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">reporting</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">junit-xml</span>
+<span class="w">  </span><span class="nt">sla</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500.0</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"exec:curl</span><span class="nv"> </span><span class="s">-X</span><span class="nv"> </span><span class="s">POST</span><span class="nv"> </span><span class="s">http://rollback-service/api/rollback"</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail-rate</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"exec:sh</span><span class="nv"> </span><span class="s">scripts/disable-chaos.sh"</span>
+</pre></div>
+</div>
+<p>When an <code class="docutils literal notranslate"><span class="pre">exec:</span></code> action is triggered, the command inherits the environment of
+the pummel process and has access to all exported environment variables.</p>
+</section>
+<section id="dynamic-control-api">
+<h2>Dynamic Control API<a class="headerlink" href="#dynamic-control-api" title="Link to this heading"></a></h2>
+<p>pummel can expose an HTTP control API during the test run. Enable it in your
+configuration:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">api</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+</pre></div>
+</div>
+<p>The API binds to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> by default for security. Two endpoints are
+available:</p>
+<p><strong>GET /metrics</strong></p>
+<p>Returns a JSON object containing per-endpoint statistics:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>http://127.0.0.1:8000/metrics
+</pre></div>
+</div>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"uptime_secs"</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"total_requests"</span><span class="p">:</span><span class="w"> </span><span class="mi">1520</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"total_failures"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"endpoints"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"method"</span><span class="p">:</span><span class="w"> </span><span class="s2">"GET"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/api/status"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"count"</span><span class="p">:</span><span class="w"> </span><span class="mi">760</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"failures"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"avg_time_ms"</span><span class="p">:</span><span class="w"> </span><span class="mf">45.2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"p95"</span><span class="p">:</span><span class="w"> </span><span class="mf">120.0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"p99"</span><span class="p">:</span><span class="w"> </span><span class="mf">250.0</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"method"</span><span class="p">:</span><span class="w"> </span><span class="s2">"POST"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/api/orders"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"count"</span><span class="p">:</span><span class="w"> </span><span class="mi">760</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"failures"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"avg_time_ms"</span><span class="p">:</span><span class="w"> </span><span class="mf">88.7</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"p95"</span><span class="p">:</span><span class="w"> </span><span class="mf">210.0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"p99"</span><span class="p">:</span><span class="w"> </span><span class="mf">480.0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>POST /control/stop</strong></p>
+<p>Gracefully aborts the running test. The engine completes in-flight requests,
+runs shutdown hooks, and exits with the appropriate status code:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/control/stop
+</pre></div>
+</div>
+<p>Use cases for the control API include:</p>
+<ul class="simple">
+<li><p><strong>CI/CD pipeline integration</strong>: A pipeline step polls <code class="docutils literal notranslate"><span class="pre">/metrics</span></code> and
+calls <code class="docutils literal notranslate"><span class="pre">/control/stop</span></code> when a deployment gate condition is met.</p></li>
+<li><p><strong>Grafana alerting webhooks</strong>: Configure a Grafana alert contact point to
+POST to <code class="docutils literal notranslate"><span class="pre">/control/stop</span></code> when an external SLO dashboard breaches.</p></li>
+<li><p><strong>Manual operator control</strong>: An on-call engineer can abort a scheduled
+chaos experiment from any machine with network access.</p></li>
+</ul>
+</section>
+<section id="complete-chaos-engineering-example">
+<h2>Complete Chaos Engineering Example<a class="headerlink" href="#complete-chaos-engineering-example" title="Link to this heading"></a></h2>
+<p>The following configuration demonstrates all three features working together
+in a realistic scenario: Toxiproxy injects 500 ms of database latency while
+pummel drives traffic against the application, monitors response times, and
+automatically rolls back the fault if the p95 exceeds the safety threshold.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">  </span><span class="nt">ramp-up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">  </span><span class="nt">hold-for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">  </span><span class="nt">scenario</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">order-flow</span>
+
+<span class="nt">scenarios</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">order-flow</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">default-address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://app-server:8080</span>
+<span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/health</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
+<span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"ok"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/orders</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+<span class="w">      </span><span class="nt">body</span><span class="p">:</span><span class="w"> </span><span class="s">'{"item":</span><span class="nv"> </span><span class="s">"widget-${uuid}",</span><span class="nv"> </span><span class="s">"qty":</span><span class="nv"> </span><span class="s">1}'</span>
+<span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">order_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.id</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/orders/${order_id}</span>
+<span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
+<span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">jsonpath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.status</span>
+<span class="w">        </span><span class="nt">expected</span><span class="p">:</span><span class="w"> </span><span class="s">"confirmed"</span>
+
+<span class="nt">services</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shell</span>
+<span class="w">  </span><span class="nt">prepare</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli create db_proxy -l 0.0.0.0:13306 -u db-server:3306</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo "Proxy created, ready to inject chaos"</span>
+<span class="w">  </span><span class="nt">startup</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli toxic add -t latency -a latency=500 -a jitter=100 db_proxy</span>
+<span class="w">  </span><span class="nt">shutdown</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toxiproxy-cli delete db_proxy</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo "Chaos cleanup complete"</span>
+
+<span class="nt">reporting</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">junit-xml</span>
+<span class="w">  </span><span class="nt">filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chaos-results.xml</span>
+<span class="w">  </span><span class="nt">sla</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000.0</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"exec:toxiproxy-cli</span><span class="nv"> </span><span class="s">toxic</span><span class="nv"> </span><span class="s">remove</span><span class="nv"> </span><span class="s">-n</span><span class="nv"> </span><span class="s">latency_downstream</span><span class="nv"> </span><span class="s">db_proxy"</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail-rate</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3000.0</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn</span>
+
+<span class="nt">api</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+</pre></div>
+</div>
+</section>
+<section id="integration-with-ci-cd">
+<h2>Integration with CI/CD<a class="headerlink" href="#integration-with-ci-cd" title="Link to this heading"></a></h2>
+<p>The control API and shell hooks make it straightforward to wire chaos tests
+into your CI/CD pipeline. Below are examples for GitHub Actions and Jenkins.</p>
+<p><strong>GitHub Actions</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># .github/workflows/chaos-test.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Chaos Test</span>
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">schedule</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">cron</span><span class="p">:</span><span class="w"> </span><span class="s">"0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">1"</span><span class="w">  </span><span class="c1"># Every Monday at 03:00 UTC</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">chaos</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">services</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">toxiproxy</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/shopify/toxiproxy:latest</span>
+<span class="w">        </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8474:8474</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">13306:13306</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install pummel</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cargo install pummel</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run chaos test</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">pummel chaos-config.yml &amp;</span>
+<span class="w">        </span><span class="no">BZT_PID=$!</span>
+<span class="w">        </span><span class="no">sleep 10</span>
+
+<span class="w">        </span><span class="no"># Poll metrics until p95 exceeds threshold or test ends</span>
+<span class="w">        </span><span class="no">while kill -0 $BZT_PID 2&gt;/dev/null; do</span>
+<span class="w">          </span><span class="no">P95=$(curl -s http://127.0.0.1:8000/metrics | jq '.endpoints[0].p95')</span>
+<span class="w">          </span><span class="no">echo "Current p95: $P95 ms"</span>
+<span class="w">          </span><span class="no">if (( $(echo "$P95 &gt; 5000" | bc -l) )); then</span>
+<span class="w">            </span><span class="no">echo "Safety threshold exceeded, stopping test"</span>
+<span class="w">            </span><span class="no">curl -X POST http://127.0.0.1:8000/control/stop</span>
+<span class="w">            </span><span class="no">break</span>
+<span class="w">          </span><span class="no">fi</span>
+<span class="w">          </span><span class="no">sleep 5</span>
+<span class="w">        </span><span class="no">done</span>
+<span class="w">        </span><span class="no">wait $BZT_PID || true</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload results</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v4</span>
+<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chaos-results</span>
+<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chaos-results.xml</span>
+</pre></div>
+</div>
+<p><strong>Jenkins Pipeline</strong></p>
+<div class="highlight-groovy notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">agent</span><span class="w"> </span><span class="n">any</span>
+<span class="w">    </span><span class="n">stages</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">'Chaos Test'</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">'toxiproxy-server &amp;'</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">'pummel chaos-config.yml &amp;'</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">'''</span>
+<span class="s1">                    sleep 15</span>
+<span class="s1">                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" \</span>
+<span class="s1">                             http://127.0.0.1:8000/metrics)</span>
+<span class="s1">                    if [ "$STATUS" = "200" ]; then</span>
+<span class="s1">                        echo "Control API is healthy"</span>
+<span class="s1">                    fi</span>
+<span class="s1">                '''</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="n">post</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">always</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">sh</span><span class="w"> </span><span class="s1">'curl -X POST http://127.0.0.1:8000/control/stop || true'</span>
+<span class="w">                    </span><span class="n">junit</span><span class="w"> </span><span class="s1">'chaos-results.xml'</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="advanced_features.html" class="btn btn-neutral float-left" title="Advanced Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="distributed_mode.html" class="btn btn-neutral float-right" title="Distributed Mode" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, pummel contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

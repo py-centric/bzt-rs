@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::Configuration;
 use serde_yaml;
 use std::fs;
@@ -8,10 +8,10 @@ pub struct YamlParser;
 
 impl YamlParser {
     #[allow(clippy::missing_errors_doc)]
-    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, BztError> {
+    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, PummelError> {
         let path = path.as_ref();
         let content = fs::read_to_string(path)?;
-        serde_yaml::from_str(&content).map_err(|e| BztError::Serde {
+        serde_yaml::from_str(&content).map_err(|e| PummelError::Serde {
             message: e.to_string(),
             file_path: Some(path.to_string_lossy().to_string()),
             source: None,

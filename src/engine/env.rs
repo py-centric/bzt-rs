@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::engine::macros::is_sensitive_var;
 use crate::engine::macros::mask_env_value;
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ impl EnvironmentLoader {
         input: &str,
         variables: &HashMap<String, String>,
         _blocklist: &[&str],
-    ) -> Result<String, BztError> {
+    ) -> Result<String, PummelError> {
         tracing::debug!("[ENV] Resolving env vars in: '{}'", input);
         let mut output = input.to_string();
         let re = regex::Regex::new(r"\$\{env\.([A-Za-z0-9_]+)\}").unwrap();
@@ -23,7 +23,7 @@ impl EnvironmentLoader {
             // instead of substring .contains() which over-blocks (e.g., KEYBOARD, TOKENIZER)
             if is_sensitive_var(var_name) {
                 tracing::debug!("[ENV] Blocked sensitive var '{}' from resolving", var_name,);
-                return Err(BztError::Environment {
+                return Err(PummelError::Environment {
                     var: var_name.to_string(),
                     reason: "access to sensitive environment variable is blocked".to_string(),
                 });
@@ -68,7 +68,7 @@ mod tests {
         vars.insert("AWS_SECRET_KEY".to_string(), "secret123".to_string());
         let result = EnvironmentLoader::resolve("${env.AWS_SECRET_KEY}", &vars, &["SECRET"]);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), BztError::Environment { .. }));
+        assert!(matches!(result.unwrap_err(), PummelError::Environment { .. }));
     }
 
     #[test]

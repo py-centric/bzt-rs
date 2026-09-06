@@ -32,10 +32,10 @@ scenarios:
 
 ## Running the test
 
-`bzt-rs` will automatically perform gRPC reflection to discover the service schema.
+`pummel` will automatically perform gRPC reflection to discover the service schema.
 
 1. Start the integrated gRPC mock server:
-   `bzt-rs examples/19-grpc-dynamic.yaml --mock`
+   `pummel examples/19-grpc-dynamic.yaml --mock`
 
 2. In a separate terminal, run the test:
-   `bzt-rs examples/19-grpc-dynamic.yaml`
+   `pummel examples/19-grpc-dynamic.yaml`

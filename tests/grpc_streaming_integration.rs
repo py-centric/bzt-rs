@@ -1,15 +1,15 @@
 #![cfg(feature = "grpc")]
 
-use bzt_rs::engine;
-use bzt_rs::engine::BztError;
-use bzt_rs::models::config::{
+use pummel::engine;
+use pummel::engine::PummelError;
+use pummel::models::config::{
     AssertionDefinition, Configuration, DetailedRequest, ExecutionPlan, HTTPRequestDefinition,
     ScenarioDefinition,
 };
 use std::collections::HashMap;
 
 #[tokio::test]
-async fn test_grpc_server_streaming_integration() -> Result<(), BztError> {
+async fn test_grpc_server_streaming_integration() -> Result<(), PummelError> {
     let mut scenarios = HashMap::new();
     scenarios.insert(
         "grpc_stream".to_string(),
@@ -57,18 +57,18 @@ async fn test_grpc_server_streaming_integration() -> Result<(), BztError> {
 
     // Run attack
     let attack =
-        bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
+        pummel::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
     let stats = attack
         .execute()
         .await
-        .map_err(|e| BztError::Goose(Box::new(e)))?;
+        .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
     assert!(stats.duration > 0);
     Ok(())
 }
 
 #[tokio::test]
-async fn test_grpc_bidi_streaming_integration() -> Result<(), BztError> {
+async fn test_grpc_bidi_streaming_integration() -> Result<(), PummelError> {
     let mut scenarios = HashMap::new();
     scenarios.insert(
         "grpc_bidi".to_string(),
@@ -119,11 +119,11 @@ async fn test_grpc_bidi_streaming_integration() -> Result<(), BztError> {
 
     // Run attack
     let attack =
-        bzt_rs::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
+        pummel::translator::StateTranslator::translate(&config, Some(host_override), None).await?;
     let stats = attack
         .execute()
         .await
-        .map_err(|e| BztError::Goose(Box::new(e)))?;
+        .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
     assert!(stats.duration > 0);
     Ok(())

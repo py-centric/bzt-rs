@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::AssertionDefinition;
 use regex::Regex;
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ impl AssertionEngine {
         body: &str,
         status: u16,
         assertion: &AssertionDefinition,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         let subject_val = match assertion.subject.as_str() {
             "http-code" => return check_status(status, assertion),
             _ => body,
@@ -29,7 +29,7 @@ impl AssertionEngine {
             };
 
             if found == assertion.not {
-                return Err(BztError::Validation {
+                return Err(PummelError::Validation {
                     field: assertion.subject.clone(),
                     reason: format!(
                         "expected to {} contain '{pattern}'",
@@ -42,12 +42,12 @@ impl AssertionEngine {
     }
 }
 
-fn check_status(status: u16, assertion: &AssertionDefinition) -> Result<(), BztError> {
+fn check_status(status: u16, assertion: &AssertionDefinition) -> Result<(), PummelError> {
     let status_str = status.to_string();
     for pattern in &assertion.contains {
         let found = status_str == *pattern;
         if found == assertion.not {
-            return Err(BztError::Validation {
+            return Err(PummelError::Validation {
                 field: "http-code".to_string(),
                 reason: format!(
                     "expected status to {} be {pattern}",

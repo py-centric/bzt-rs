@@ -1,7 +1,7 @@
 Advanced Features
 =================
 
-bzt-rs provides robust mechanisms for building complex, realistic
+pummel provides robust mechanisms for building complex, realistic
 performance tests that mirror real-world user behavior.
 
 Dynamic Data & Macros
@@ -88,7 +88,7 @@ Use extracted variables in any subsequent request field:
 
 Dynamic gRPC (Reflection & Streaming)
 -------------------------------------
-bzt-rs provides advanced, dynamic support for gRPC without requiring pre-compiled
+pummel provides advanced, dynamic support for gRPC without requiring pre-compiled
 proto files. By leveraging gRPC Reflection, the engine discovers service schemas
 at runtime.
 
@@ -121,7 +121,7 @@ send messages, and verify asynchronous responses.
        requests:
        - url: ws://localhost:8080/chat
          protocol: websocket
-         message: "Hello from bzt-rs"
+         message: "Hello from pummel"
          assert:
          - contains: ["Welcome"]
 
@@ -207,7 +207,7 @@ Each SLA criterion supports:
 
 Security Features
 -----------------
-bzt-rs includes several security hardening measures:
+pummel includes several security hardening measures:
 
 * **Path Traversal Prevention**: All file paths (data sources, body files)
   are canonicalized and checked against the project root. Paths containing
@@ -230,12 +230,12 @@ bzt-rs includes several security hardening measures:
 
 CLI Reporter
 ------------
-After every test run, bzt-rs outputs a terminal summary table:
+After every test run, pummel outputs a terminal summary table:
 
 .. code-block:: text
 
    ==========================================================================================
-     BZT-RS LOAD TEST SUMMARY
+     PUMMEL LOAD TEST SUMMARY
    ==========================================================================================
      Duration: 60s  |  Max Users: 10  |  Total Requests: 600  |  Failures: 0 (0.0%)
    ------------------------------------------------------------------------------------------

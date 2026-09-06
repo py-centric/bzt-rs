@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::{Configuration, DetailedRequest, HttpMethod, HTTPRequestDefinition, Protocol};
 use ax_ws::{Message, WebSocket};
 use axum::{
@@ -234,7 +234,7 @@ pub struct MockServerAddresses {
 }
 
 #[allow(clippy::missing_errors_doc)]
-pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddresses, BztError> {
+pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddresses, PummelError> {
     let shared_config = Arc::new(config);
     let app = Router::new()
         .route("/ws/{*path}", axum::routing::get(handle_ws_upgrade))
@@ -263,7 +263,7 @@ pub async fn start_mock_server(config: Configuration) -> Result<MockServerAddres
     let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(bzt_mock::FILE_DESCRIPTOR_SET)
         .build_v1()
-        .map_err(|e| crate::engine::BztError::Internal(e.to_string()))?;
+        .map_err(|e| crate::engine::PummelError::Internal(e.to_string()))?;
 
     tokio::spawn(async move {
         if let Err(e) = Server::builder()

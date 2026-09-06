@@ -1,6 +1,6 @@
-# bzt-rs Architecture
+# pummel Architecture
 
-`bzt-rs` is a modular, high-throughput pipeline that transforms declarative performance specifications into concurrent asynchronous load generation tasks.
+`pummel` is a modular, high-throughput pipeline that transforms declarative performance specifications into concurrent asynchronous load generation tasks.
 
 ## System Overview
 
@@ -77,7 +77,7 @@ graph LR
 ```mermaid
 graph TB
     subgraph "Core"
-        ENGINE["engine/mod.rs<br/>BztError enum"]
+        ENGINE["engine/mod.rs<br/>PummelError enum"]
         MODELS["models/config.rs<br/>Configuration types"]
     end
 
@@ -158,7 +158,7 @@ sequenceDiagram
     participant Goose
     participant Reporters
 
-    User->>CLI: bzt-rs config.yaml
+    User->>CLI: pummel config.yaml
     CLI->>Parser: Parse file by extension (.yaml/.json/.toml)
 
     alt TOML with shorthand syntax
@@ -290,4 +290,4 @@ A multi-protocol test utility (Axum for HTTP/WebSocket, Tonic for gRPC) that:
 
 ## Performance Profile
 
-By leveraging Rust's `tokio` runtime and the Goose engine, `bzt-rs` maintains a near-zero CPU/memory footprint compared to Java or Python-based alternatives, while providing significantly deeper protocol control. The `--mock-run` mode adds no measurable overhead to the hot path.
+By leveraging Rust's `tokio` runtime and the Goose engine, `pummel` maintains a near-zero CPU/memory footprint compared to Java or Python-based alternatives, while providing significantly deeper protocol control. The `--mock-run` mode adds no measurable overhead to the hot path.

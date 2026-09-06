@@ -324,47 +324,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ae3f5d315924270530207e2a68396c3cc547f6dca3fbdca317cfb1a51edb593"
 
 [[package]]
-name = "bzt-rs"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "axum 0.8.9",
- "cargo-llvm-cov",
- "clap",
- "csv",
- "fake",
- "futures-util",
- "goose",
- "influxdb",
- "ntest",
- "prost",
- "prost-reflect",
- "prost-types",
- "quick-xml 0.41.0",
- "regex",
- "serde",
- "serde_json",
- "serde_json_path",
- "serde_yaml",
- "sxd-document",
- "sxd-xpath",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tokio-tungstenite 0.26.2",
- "toml 0.8.23",
- "tonic",
- "tonic-build",
- "tonic-reflection",
- "tower 0.5.3",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "camino"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2116,6 +2075,47 @@ checksum = "6f42ea446cab60335f76979ec15e12619a2165b5ae2c12166bef27d283a9fadf"
 dependencies = [
  "idna",
  "psl-types",
+]
+
+[[package]]
+name = "pummel"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "axum 0.8.9",
+ "cargo-llvm-cov",
+ "clap",
+ "csv",
+ "fake",
+ "futures-util",
+ "goose",
+ "influxdb",
+ "ntest",
+ "prost",
+ "prost-reflect",
+ "prost-types",
+ "quick-xml 0.41.0",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_json_path",
+ "serde_yaml",
+ "sxd-document",
+ "sxd-xpath",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite 0.26.2",
+ "toml 0.8.23",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+ "tower 0.5.3",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

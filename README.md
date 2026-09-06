@@ -1,4 +1,4 @@
-# bzt-rs
+# pummel
 
 > A high-performance, protocol-agnostic load generator that bridges Taurus YAML configurations with a Rust-native attack engine.
 
@@ -7,13 +7,13 @@
 
 ## Why This Exists
 
-Performance testing tools are either easy to configure (JMeter, k6) or fast (custom Go/Rust harnesses), but rarely both. `bzt-rs` lets you define complex multi-protocol scenarios in familiar Taurus YAML and execute them with near-zero overhead via the Goose engine — no JVM, no Node runtime, no container orchestration required.
+Performance testing tools are either easy to configure (JMeter, k6) or fast (custom Go/Rust harnesses), but rarely both. `pummel` lets you define complex multi-protocol scenarios in familiar Taurus YAML and execute them with near-zero overhead via the Goose engine — no JVM, no Node runtime, no container orchestration required.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/py-centric/bzt-rs.git
-cd bzt-rs
+git clone https://github.com/py-centric/pummel.git
+cd pummel
 cargo build --release
 ```
 
@@ -38,7 +38,7 @@ scenarios:
 Run it:
 
 ```bash
-./target/release/bzt-rs load_test.yaml
+./target/release/pummel load_test.yaml
 ```
 
 ## Installation
@@ -50,12 +50,12 @@ Run it:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/py-centric/bzt-rs.git
-cd bzt-rs
+git clone https://github.com/py-centric/pummel.git
+cd pummel
 cargo build --release
 ```
 
-Binary: `./target/release/bzt-rs`.
+Binary: `./target/release/pummel`.
 
 **Optional optimization** for maximum load generation performance:
 
@@ -66,7 +66,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 ## CLI Reference
 
 ```
-Usage: bzt-rs [OPTIONS] <CONFIG>
+Usage: pummel [OPTIONS] <CONFIG>
 
 Arguments:
   <CONFIG>  Path to the configuration file (.yaml, .yml, .json, .toml)
@@ -84,7 +84,7 @@ Options:
 Validates the configuration, checks that data source files exist, verifies the config translates to a Goose attack, and scans for sensitive environment variable references — all without sending any traffic.
 
 ```bash
-bzt-rs --dry-run load_test.yaml
+pummel --dry-run load_test.yaml
 ```
 
 Output:
@@ -102,7 +102,7 @@ Validation Successful.
 Starts a protocol-aware mock server (HTTP via Axum, gRPC via Tonic) that simulates backend responses based on assertion definitions in your config. The server binds to `127.0.0.1` (localhost only) on random ports.
 
 ```bash
-bzt-rs --mock load_test.yaml
+pummel --mock load_test.yaml
 # Mock server started at http://127.0.0.1:54321
 # gRPC Mock server started at 127.0.0.1:54322
 # Press Ctrl+C to stop.
@@ -113,12 +113,12 @@ bzt-rs --mock load_test.yaml
 Starts the mock server **and** runs the load test against it automatically. The host is overridden to point at the mock server — no real backend needed.
 
 ```bash
-bzt-rs --mock-run load_test.yaml
+pummel --mock-run load_test.yaml
 ```
 
 ## Configuration Formats
 
-`bzt-rs` supports three configuration formats, all producing the same internal representation.
+`pummel` supports three configuration formats, all producing the same internal representation.
 
 ### YAML (Taurus-compatible)
 
@@ -229,7 +229,7 @@ auth = { requests = ["/login"] }
 
 ### Dynamic gRPC
 
-`bzt-rs` uses gRPC server reflection to discover service schemas at runtime. No `.proto` files or code generation required.
+`pummel` uses gRPC server reflection to discover service schemas at runtime. No `.proto` files or code generation required.
 
 ```yaml
 scenarios:
@@ -281,7 +281,7 @@ A terminal-friendly summary table is **always** printed after a test run:
 
 ```
 ==========================================================================================
-  BZT-RS LOAD TEST SUMMARY
+  PUMMEL LOAD TEST SUMMARY
 ==========================================================================================
   Duration: 30s  |  Max Users: 50  |  Total Requests: 15234  |  Failures: 12 (0.1%)
 ------------------------------------------------------------------------------------------
@@ -328,7 +328,7 @@ reporting:
 
 ## Architecture
 
-`bzt-rs` follows a modular pipeline optimized for async concurrency. The core flow is:
+`pummel` follows a modular pipeline optimized for async concurrency. The core flow is:
 
 ```mermaid
 graph LR
@@ -400,7 +400,7 @@ sequenceDiagram
     participant Goose as Goose Engine
     participant Reporters as Reporters
 
-    User->>CLI: bzt-rs config.yaml
+    User->>CLI: pummel config.yaml
     CLI->>Parser: Parse file by extension
     Parser->>Config: Deserialize to Configuration
     alt TOML shorthand
@@ -467,7 +467,7 @@ Key security measures:
 
 ## Chaos Engineering
 
-`bzt-rs` natively supports chaos engineering workflows with lifecycle hooks, real-time SLA breach actions, and a dynamic control API.
+`pummel` natively supports chaos engineering workflows with lifecycle hooks, real-time SLA breach actions, and a dynamic control API.
 
 ```yaml
 # Inject chaos with Toxiproxy during the test
@@ -498,7 +498,7 @@ The control API exposes `GET /metrics` (live JSON metrics) and `POST /control/st
 
 ## Error Handling
 
-`bzt-rs` uses structured error types (`BztError`) with tagged variants for precise diagnostics:
+`pummel` uses structured error types (`PummelError`) with tagged variants for precise diagnostics:
 
 | Variant | Description |
 |---------|-------------|

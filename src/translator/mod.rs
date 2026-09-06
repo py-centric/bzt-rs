@@ -6,7 +6,7 @@ use body::resolve_body;
 use context::{GrpcClients, TransactionContext};
 use metrics_recorder::record_request;
 
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::engine::control_flow::{AssertionEngine, ControlFlowEngine};
 use crate::engine::data_sources::CsvDataSource;
 use crate::engine::extraction::{ExtractionEngine, UserSession};
@@ -28,7 +28,7 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 
 /// Logs a macro evaluation error and returns `Ok(())` to skip the transaction.
 /// Sensitive env vars are rejected (never injected) but the load test continues.
-fn log_macro_error(e: &BztError) {
+fn log_macro_error(e: &PummelError) {
     tracing::error!("[SECURITY] Macro evaluation blocked: {e}");
 }
 
@@ -54,13 +54,13 @@ impl StateTranslator {
     ///
     /// # Errors
     ///
-    /// Returns `BztError` if translation from BZT configuration to Goose fails.
+    /// Returns `PummelError` if translation from configuration to Goose fails.
     #[allow(clippy::unused_async)]
     pub async fn translate(
         config: &Configuration,
         host_override: Option<String>,
         real_time_metrics: Option<Arc<RwLock<RealTimeMetrics>>>,
-    ) -> Result<GooseAttack, BztError> {
+    ) -> Result<GooseAttack, PummelError> {
         let mut configuration = goose::config::GooseConfiguration::default();
 
         // FR-004: Enable HTML report generation via Goose configuration
@@ -76,7 +76,7 @@ impl StateTranslator {
         }
 
         let mut attack = GooseAttack::initialize_with_config(configuration)
-            .map_err(|e| BztError::Goose(Box::new(e)))?;
+            .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
         // 1. Discovery phase for gRPC reflection (only when grpc feature is enabled)
         #[cfg(feature = "grpc")]
@@ -129,16 +129,16 @@ impl StateTranslator {
 
             attack = *attack
                 .set_default(GooseDefault::Users, exec.concurrency)
-                .map_err(|e| BztError::Goose(Box::new(e)))?;
+                .map_err(|e| PummelError::Goose(Box::new(e)))?;
             attack = *attack
                 .set_default(
                     GooseDefault::RunTime,
                     parse_time_to_ms(&exec.hold_for) as usize / 1000,
                 )
-                .map_err(|e| BztError::Goose(Box::new(e)))?;
+                .map_err(|e| PummelError::Goose(Box::new(e)))?;
             attack = *attack
                 .set_default(GooseDefault::HatchRate, hatch_rate.as_str())
-                .map_err(|e| BztError::Goose(Box::new(e)))?;
+                .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
             let mut host = host_override.clone();
             if host.is_none() {
@@ -151,12 +151,12 @@ impl StateTranslator {
             let host = host.unwrap_or_else(|| "http://localhost".to_string());
             attack = *attack
                 .set_default(GooseDefault::Host, host.as_str())
-                .map_err(|e| BztError::Goose(Box::new(e)))?;
+                .map_err(|e| PummelError::Goose(Box::new(e)))?;
 
             if let Some(throughput) = exec.throughput {
                 attack = *attack
                     .set_default(GooseDefault::ThrottleRequests, throughput)
-                    .map_err(|e| BztError::Goose(Box::new(e)))?;
+                    .map_err(|e| PummelError::Goose(Box::new(e)))?;
             }
 
             if let Some(scenario_def) = config.scenarios.get(&exec.scenario) {
@@ -166,7 +166,7 @@ impl StateTranslator {
                 if scenario_def.weight > 1 {
                     scenario = scenario
                         .set_weight(scenario_def.weight)
-                        .map_err(|e| BztError::Goose(Box::new(e)))?;
+                        .map_err(|e| PummelError::Goose(Box::new(e)))?;
                 }
 
                 // Handle scenario-level think-time
@@ -177,7 +177,7 @@ impl StateTranslator {
                             Duration::from_millis(min as u64),
                             Duration::from_millis(max as u64),
                         )
-                        .map_err(|e| BztError::Goose(Box::new(e)))?;
+                        .map_err(|e| PummelError::Goose(Box::new(e)))?;
                 }
 
                 // Add a setup transaction to initialize UserSession

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Detailed Example: E-Commerce User Journey &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>Detailed Example: E-Commerce User Journey &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -35,7 +35,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -51,10 +51,11 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Detailed Example: E-Commerce User Journey</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#the-scenario">The Scenario</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#full-configuration-ecommerce-test-yaml">Full Configuration (<cite>ecommerce_test.yaml</cite>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-configuration-ecommerce-test-yaml">Full Configuration (<code class="docutils literal notranslate"><span class="pre">ecommerce_test.yaml</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#step-by-step-breakdown">Step-by-Step Breakdown</a></li>
 </ul>
 </li>
@@ -67,7 +68,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -102,7 +103,7 @@ extraction, and complex control flow.</p>
 </ol>
 </section>
 <section id="full-configuration-ecommerce-test-yaml">
-<h2>Full Configuration (<cite>ecommerce_test.yaml</cite>)<a class="headerlink" href="#full-configuration-ecommerce-test-yaml" title="Link to this heading"></a></h2>
+<h2>Full Configuration (<code class="docutils literal notranslate"><span class="pre">ecommerce_test.yaml</span></code>)<a class="headerlink" href="#full-configuration-ecommerce-test-yaml" title="Link to this heading"></a></h2>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">execution</span><span class="p">:</span>
 <span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w">           </span><span class="c1"># Scale to 50 concurrent users</span>
 <span class="w">  </span><span class="nt">ramp-up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span><span class="w">               </span><span class="c1"># Reach target concurrency over 1 minute</span>
@@ -112,7 +113,9 @@ extraction, and complex control flow.</p>
 <span class="nt">scenarios</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">checkout-flow</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">data-sources</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users.csv</span><span class="w">             </span><span class="c1"># CSV file containing &#39;username&#39; and &#39;password&#39;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users.csv</span><span class="w">             </span><span class="c1"># CSV file containing 'username' and 'password'</span>
+<span class="w">    </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">Accept</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application/json</span>
 
 <span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
 <span class="w">    </span><span class="c1"># Step 1: Authentication</span>
@@ -120,8 +123,8 @@ extraction, and complex control flow.</p>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
 <span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">login_request</span>
 <span class="w">      </span><span class="nt">body</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${username}&quot;</span>
-<span class="w">        </span><span class="nt">pass</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${password}&quot;</span>
+<span class="w">        </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="s">"${username}"</span>
+<span class="w">        </span><span class="nt">pass</span><span class="p">:</span><span class="w"> </span><span class="s">"${password}"</span>
 <span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">authToken</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.session.token</span>
 <span class="w">      </span><span class="nt">assert</span><span class="p">:</span>
@@ -133,7 +136,7 @@ extraction, and complex control flow.</p>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
 <span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search_products</span>
 <span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">"Bearer</span><span class="nv"> </span><span class="s">${authToken}"</span>
 <span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">productId</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.results[0].id</span>
 
@@ -141,11 +144,11 @@ extraction, and complex control flow.</p>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://api.shop.com/v1/cart/add</span>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
 <span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">add_to_cart</span>
-<span class="w">      </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${productId}&quot;</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">  </span><span class="c1"># Only add to cart if a product was found</span>
+<span class="w">      </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">"${productId}"</span><span class="w"> </span><span class="kt">!=</span><span class="w"> </span><span class="s">""</span><span class="w">  </span><span class="c1"># Only add to cart if a product was found</span>
 <span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">"Bearer</span><span class="nv"> </span><span class="s">${authToken}"</span>
 <span class="w">      </span><span class="nt">body</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">product_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${productId}&quot;</span>
+<span class="w">        </span><span class="nt">product_id</span><span class="p">:</span><span class="w"> </span><span class="s">"${productId}"</span>
 <span class="w">        </span><span class="nt">quantity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 
 <span class="w">    </span><span class="c1"># Step 4: Polling for Order Status</span>
@@ -153,41 +156,55 @@ extraction, and complex control flow.</p>
 <span class="w">      </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GET</span>
 <span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">poll_order_status</span>
 <span class="w">      </span><span class="nt">headers</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer</span><span class="nv"> </span><span class="s">${authToken}&quot;</span>
-<span class="w">      </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${orderStatus}&quot;</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== &quot;processing&quot;</span>
+<span class="w">        </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="s">"Bearer</span><span class="nv"> </span><span class="s">${authToken}"</span>
+<span class="w">      </span><span class="nt">loop</span><span class="p">:</span><span class="w"> </span><span class="s">"${orderStatus}"</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">== "processing"</span>
 <span class="w">      </span><span class="nt">extract-jsonpath</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">orderStatus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$.status</span>
 
 <span class="nt">reporting</span><span class="p">:</span>
 <span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">junit-xml</span>
 <span class="w">  </span><span class="nt">filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test_results.xml</span>
-<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
-<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">  </span><span class="nt">failed-threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">  </span><span class="nt">sla</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail-rate</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg-response-time</span>
+<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5000.0</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn</span>
 </pre></div>
 </div>
 </section>
 <section id="step-by-step-breakdown">
 <h2>Step-by-Step Breakdown<a class="headerlink" href="#step-by-step-breakdown" title="Link to this heading"></a></h2>
 <p>### 1. Execution Settings
-We configure <cite>50</cite> concurrent users with a <cite>1m</cite> ramp-up. This ensures that
+We configure <code class="docutils literal notranslate"><span class="pre">50</span></code> concurrent users with a <code class="docutils literal notranslate"><span class="pre">1m</span></code> ramp-up. This ensures that
 load is added gradually to avoid overwhelming the system at the very
 beginning of the test.</p>
 <p>### 2. Data Sources
-The <cite>users.csv</cite> file provides unique credentials for each virtual user,
+The <code class="docutils literal notranslate"><span class="pre">users.csv</span></code> file provides unique credentials for each virtual user,
 preventing duplicate login attempts and ensuring a realistic distribution
 of accounts.</p>
-<p>### 3. State Management
-We use <cite>extract-jsonpath</cite> to capture the <cite>authToken</cite> from the login response
-and reuse it in the <cite>Authorization</cite> header for all subsequent requests.
+<p>### 3. Scenario-Level Headers
+The <code class="docutils literal notranslate"><span class="pre">headers</span></code> block under the scenario applies the <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header to
+every request, avoiding repetition in individual request definitions.</p>
+<p>### 4. State Management
+We use <code class="docutils literal notranslate"><span class="pre">extract-jsonpath</span></code> to capture the <code class="docutils literal notranslate"><span class="pre">authToken</span></code> from the login response
+and reuse it in the <code class="docutils literal notranslate"><span class="pre">Authorization</span></code> header for all subsequent requests.
 This maintains the stateful nature of a real user session.</p>
-<p>### 4. Dynamic Data
-The <cite>${faker.word}</cite> macro generates a random search term for each request,
+<p>### 5. Dynamic Data
+The <code class="docutils literal notranslate"><span class="pre">${faker.word}</span></code> macro generates a random search term for each request,
 preventing the backend from serving cached results and ensuring a
 comprehensive test of the search index.</p>
-<p>### 5. Control Flow
-The <cite>if</cite> condition handles cases where a search might return no results,
-while the <cite>loop</cite> ensures the user waits for their order to process before
+<p>### 6. Control Flow
+The <code class="docutils literal notranslate"><span class="pre">if</span></code> condition handles cases where a search might return no results,
+while the <code class="docutils literal notranslate"><span class="pre">loop</span></code> ensures the user waits for their order to process before
 finishing the scenario, mirroring real user patience.</p>
+<p>### 7. SLA Criteria
+The reporting section defines two SLA criteria: a fail-rate threshold of
+5% (warn if exceeded) and an average response time threshold of 5000ms
+(warn). These are evaluated after the test completes and reported in
+console output alongside the JUnit XML report.</p>
 </section>
 </section>
 
@@ -202,7 +219,7 @@ finishing the scenario, mirroring real user patience.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

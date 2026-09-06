@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>Installation &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -35,7 +35,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -58,6 +58,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="distributed_mode.html">Distributed Mode</a></li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
@@ -69,7 +70,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -89,11 +90,11 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
-<p>bzt-rs is designed as a standalone binary with zero runtime dependencies.
+<p>pummel is designed as a standalone binary with zero runtime dependencies.
 This makes it incredibly easy to distribute across different environments.</p>
 <section id="system-prerequisites">
 <h2>System Prerequisites<a class="headerlink" href="#system-prerequisites" title="Link to this heading"></a></h2>
-<p>Before building bzt-rs, ensure your system meets the following requirements:</p>
+<p>Before building pummel, ensure your system meets the following requirements:</p>
 <ul class="simple">
 <li><p><strong>Operating System</strong>: Linux (primary support), macOS, or Windows.</p></li>
 <li><p><strong>Rust Toolchain</strong>: Rust 2024 Edition or later is required.
@@ -104,13 +105,13 @@ on Ubuntu) for compiling dependencies like OpenSSL (if enabled).</p></li>
 </section>
 <section id="building-from-source">
 <h2>Building from Source<a class="headerlink" href="#building-from-source" title="Link to this heading"></a></h2>
-<p>To build bzt-rs from source, follow these steps:</p>
+<p>To build pummel from source, follow these steps:</p>
 <ol class="arabic">
 <li><p><strong>Clone the Repository</strong>:
 .. code-block:: bash</p>
 <blockquote>
-<div><p>git clone <a class="reference external" href="https://github.com/py-centric/bzt-rs.git">https://github.com/py-centric/bzt-rs.git</a>
-cd bzt-rs</p>
+<div><p>git clone <a class="reference external" href="https://github.com/py-centric/pummel.git">https://github.com/py-centric/pummel.git</a>
+cd pummel</p>
 </div></blockquote>
 </li>
 <li><p><strong>Run a Full Build</strong>:
@@ -120,10 +121,10 @@ cd bzt-rs</p>
 </div></blockquote>
 </li>
 <li><p><strong>Verify the Installation</strong>:
-The binary is generated at <cite>target/release/bzt-rs</cite>. Check the version:
+The binary is generated at <cite>target/release/pummel</cite>. Check the version:
 .. code-block:: bash</p>
 <blockquote>
-<div><p>./target/release/bzt-rs –version</p>
+<div><p>./target/release/pummel –version</p>
 </div></blockquote>
 </li>
 </ol>
@@ -135,7 +136,7 @@ The binary is generated at <cite>target/release/bzt-rs</cite>. Check the version
 <li><p><strong>LTO (Link Time Optimization)</strong>: Enable this in <cite>Cargo.toml</cite> for
 further runtime performance gains.</p></li>
 <li><p><strong>Target-Specific Optimization</strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">RUSTFLAGS</span><span class="o">=</span><span class="s2">&quot;-C target-cpu=native&quot;</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">RUSTFLAGS</span><span class="o">=</span><span class="s2">"-C target-cpu=native"</span><span class="w"> </span>cargo<span class="w"> </span>build<span class="w"> </span>--release
 </pre></div>
 </div>
 </li>
@@ -143,9 +144,9 @@ further runtime performance gains.</p></li>
 </section>
 <section id="docker-installation">
 <h2>Docker Installation<a class="headerlink" href="#docker-installation" title="Link to this heading"></a></h2>
-<p>If you prefer to run bzt-rs in a containerized environment:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>bzt-rs<span class="w"> </span>.
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>bzt-rs<span class="w"> </span>--help
+<p>If you prefer to run pummel in a containerized environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>pummel<span class="w"> </span>.
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>pummel<span class="w"> </span>--help
 </pre></div>
 </div>
 </section>
@@ -172,7 +173,7 @@ update your toolchain: <cite>rustup update stable</cite>.</p></li>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

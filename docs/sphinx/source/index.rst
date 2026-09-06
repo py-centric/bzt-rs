@@ -1,4 +1,4 @@
-bzt-rs: High-Performance Taurus Runner in Rust
+pummel: High-Performance Taurus Runner in Rust
 ==============================================
 
 .. toctree::
@@ -16,7 +16,7 @@ bzt-rs: High-Performance Taurus Runner in Rust
 
 Introduction
 ------------
-bzt-rs is a comprehensive execution engine that interprets industry-standard Taurus
+pummel is a comprehensive execution engine that interprets industry-standard Taurus
 configurations and a simplified native shorthand, executing them using the
 high-performance, Rust-based Goose framework.
 
@@ -39,7 +39,7 @@ Key Features
 
 * **Advanced Extraction**: Captured variables using JSONPath, Regex, and full XPath 2.0.
 
-* **Structured Error Handling**: Typed ``BztError`` with context, file paths,
+* **Structured Error Handling**: Typed ``PummelError`` with context, file paths,
   and source chaining for actionable diagnostics.
 
 * **Security Hardening**: Path traversal prevention, 100MB file size limits,

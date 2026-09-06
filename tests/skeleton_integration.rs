@@ -1,7 +1,7 @@
 mod common;
 
-use bzt_rs::engine::goose;
-use bzt_rs::parser::yaml::YamlParser;
+use pummel::engine::goose;
+use pummel::parser::yaml::YamlParser;
 use ntest::timeout;
 use std::io::Write;
 use tempfile::NamedTempFile;

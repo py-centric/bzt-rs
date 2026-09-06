@@ -1,4 +1,4 @@
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::Configuration;
 use serde_json;
 use std::fs;
@@ -8,12 +8,12 @@ pub struct JsonParser;
 
 impl JsonParser {
     #[allow(clippy::missing_errors_doc)]
-    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, BztError> {
+    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Configuration, PummelError> {
         let path = path.as_ref();
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content).map_err(|e| {
             let msg = e.to_string();
-            BztError::Serde {
+            PummelError::Serde {
                 message: msg,
                 file_path: Some(path.to_string_lossy().to_string()),
                 source: Some(Box::new(e)),

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Distributed Mode &mdash; bzt-rs 0.1.0 documentation</title>
+  <title>Distributed Mode &mdash; pummel 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -23,7 +23,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Detailed Example: E-Commerce User Journey" href="example.html" />
-    <link rel="prev" title="Advanced Features" href="advanced_features.html" /> 
+    <link rel="prev" title="Chaos Engineering" href="chaos_engineering.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -35,7 +35,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            bzt-rs
+            pummel
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -51,12 +51,9 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chaos_engineering.html">Chaos Engineering</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Distributed Mode</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#manager-worker-architecture">Manager/Worker Architecture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#setting-up-the-manager">Setting Up the Manager</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#setting-up-the-workers">Setting Up the Workers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#network-requirements">Network Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#communication-protocol">Communication Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#current-capabilities">Current Capabilities</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="example.html">Detailed Example: E-Commerce User Journey</a></li>
@@ -69,7 +66,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">bzt-rs</a>
+          <a href="index.html">pummel</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -89,60 +86,23 @@
              
   <section id="distributed-mode">
 <h1>Distributed Mode<a class="headerlink" href="#distributed-mode" title="Link to this heading"></a></h1>
-<p>bzt-rs provides native support for distributed load generation using a
-highly-scalable Manager/Worker architecture. This allows you to generate
-massive amounts of traffic by coordinating multiple machines from a single
-point of control.</p>
-<section id="manager-worker-architecture">
-<h2>Manager/Worker Architecture<a class="headerlink" href="#manager-worker-architecture" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p><strong>Manager</strong>: The central controller that parses the configuration,
-distributes it to workers, and aggregates metrics. The manager does not
-generate load itself.</p></li>
-<li><p><strong>Worker</strong>: Independent agents that receive instructions from the manager,
-generate the actual load, and report metrics back to the manager.</p></li>
-</ul>
-</section>
-<section id="setting-up-the-manager">
-<h2>Setting Up the Manager<a class="headerlink" href="#setting-up-the-manager" title="Link to this heading"></a></h2>
-<p>Launch the manager on a machine that all workers can reach:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bzt-rs<span class="w"> </span>--manager<span class="w"> </span>--expect-workers<span class="w"> </span><span class="m">5</span><span class="w"> </span>--manager-port<span class="w"> </span><span class="m">5115</span><span class="w"> </span>test.yaml
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Distributed mode is <strong>not yet implemented</strong>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">--manager</span></code>, <code class="docutils literal notranslate"><span class="pre">--worker</span></code>, <code class="docutils literal notranslate"><span class="pre">--expect-workers</span></code>, <code class="docutils literal notranslate"><span class="pre">--manager-host</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">--manager-port</span></code> CLI flags have been removed from the argument parser
+to avoid silent no-op behavior. They will be re-implemented in a future
+release.</p>
+</div>
+<section id="current-capabilities">
+<h2>Current Capabilities<a class="headerlink" href="#current-capabilities" title="Link to this heading"></a></h2>
+<p>For the current release, pummel focuses on single-node load generation.
+To generate load from a single machine:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./pummel<span class="w"> </span>test.yaml
 </pre></div>
 </div>
-<ul class="simple">
-<li><p><strong>–expect-workers</strong>: The number of workers the manager should wait for
-before starting the test.</p></li>
-<li><p><strong>–manager-port</strong>: The port the manager will listen on for worker
-connections (default: 5115).</p></li>
-</ul>
-</section>
-<section id="setting-up-the-workers">
-<h2>Setting Up the Workers<a class="headerlink" href="#setting-up-the-workers" title="Link to this heading"></a></h2>
-<p>Launch workers on each machine that will generate load:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./bzt-rs<span class="w"> </span>--worker<span class="w"> </span>--manager-host<span class="w"> </span>&lt;MANAGER_IP&gt;<span class="w"> </span>--manager-port<span class="w"> </span><span class="m">5115</span>
-</pre></div>
-</div>
-<ul class="simple">
-<li><p><strong>–manager-host</strong>: The IP address or hostname of the machine running the
-manager.</p></li>
-<li><p><strong>–manager-port</strong>: The same port specified on the manager.</p></li>
-</ul>
-</section>
-<section id="network-requirements">
-<h2>Network Requirements<a class="headerlink" href="#network-requirements" title="Link to this heading"></a></h2>
-<p>Ensure the following ports are open between the manager and workers:</p>
-<ul class="simple">
-<li><p><strong>Manager Port (default: 5115)</strong>: Used for coordination and control.</p></li>
-<li><p><strong>Metrics Port (optional)</strong>: If Prometheus metrics are enabled on the
-manager, ensure the metrics port (default: 8080) is accessible for
-scraping.</p></li>
-</ul>
-</section>
-<section id="communication-protocol">
-<h2>Communication Protocol<a class="headerlink" href="#communication-protocol" title="Link to this heading"></a></h2>
-<p>The manager and workers communicate over a high-performance, low-latency
-gRPC-based protocol to ensure synchronization and real-time metric updates
-with minimal overhead.</p>
+<p>See the <span class="xref std std-doc">quickstart</span> for common usage patterns and the
+<a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> reference for available options.</p>
 </section>
 </section>
 
@@ -150,14 +110,14 @@ with minimal overhead.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="advanced_features.html" class="btn btn-neutral float-left" title="Advanced Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="chaos_engineering.html" class="btn btn-neutral float-left" title="Chaos Engineering" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="example.html" class="btn btn-neutral float-right" title="Detailed Example: E-Commerce User Journey" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2026, bzt-rs contributors.</p>
+    <p>&#169; Copyright 2026, pummel contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

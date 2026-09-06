@@ -10,7 +10,7 @@ scenarios:
     # Scenario-level headers applied to ALL requests
     headers:
       Accept: application/json
-      X-Client: bzt-rs
+      X-Client: pummel
 
     requests:
       - url: /api/profile

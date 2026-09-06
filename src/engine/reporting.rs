@@ -5,7 +5,7 @@
     clippy::cast_possible_wrap
 )]
 
-use crate::engine::BztError;
+use crate::engine::PummelError;
 use crate::models::config::ReportingDefinition;
 use goose::metrics::GooseMetrics;
 #[cfg(feature = "influxdb-reporter")]
@@ -37,12 +37,12 @@ pub trait Reporter: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns `BztError` if report generation or writing fails.
+    /// Returns `PummelError` if report generation or writing fails.
     fn report(
         &self,
         definition: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError>;
+    ) -> Result<(), PummelError>;
 }
 
 #[cfg(feature = "influxdb-reporter")]
@@ -70,7 +70,7 @@ impl JUnitReporter {
     pub fn generate_report(
         reporting: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         if reporting.module != "junit-xml" {
             return Ok(());
         }
@@ -85,13 +85,13 @@ impl JUnitReporter {
         }
 
         writeln!(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-            .map_err(|e| BztError::Internal(e.to_string()))?;
-        writeln!(file, "<testsuites>").map_err(|e| BztError::Internal(e.to_string()))?;
+            .map_err(|e| PummelError::Internal(e.to_string()))?;
+        writeln!(file, "<testsuites>").map_err(|e| PummelError::Internal(e.to_string()))?;
         writeln!(
             file,
-            "  <testsuite name=\"bzt-rs\" tests=\"{total_requests}\" failures=\"{failures}\">"
+            "  <testsuite name=\"pummel\" tests=\"{total_requests}\" failures=\"{failures}\">"
         )
-        .map_err(|e| BztError::Internal(e.to_string()))?;
+        .map_err(|e| PummelError::Internal(e.to_string()))?;
 
         for (name, request) in &stats.requests {
             let avg_time = if request.raw_data.counter > 0 {
@@ -108,19 +108,19 @@ impl JUnitReporter {
                 safe_name,
                 avg_time / 1000.0
             )
-            .map_err(|e| BztError::Internal(e.to_string()))?;
+            .map_err(|e| PummelError::Internal(e.to_string()))?;
             if request.fail_count > 0 {
                 writeln!(
                     file,
                     "      <failure message=\"Request failed: {safe_method} {safe_name}\" type=\"Error\" />",
                 )
-                .map_err(|e| BztError::Internal(e.to_string()))?;
+                .map_err(|e| PummelError::Internal(e.to_string()))?;
             }
-            writeln!(file, "    </testcase>").map_err(|e| BztError::Internal(e.to_string()))?;
+            writeln!(file, "    </testcase>").map_err(|e| PummelError::Internal(e.to_string()))?;
         }
 
-        writeln!(file, "  </testsuite>").map_err(|e| BztError::Internal(e.to_string()))?;
-        writeln!(file, "</testsuites>").map_err(|e| BztError::Internal(e.to_string()))?;
+        writeln!(file, "  </testsuite>").map_err(|e| PummelError::Internal(e.to_string()))?;
+        writeln!(file, "</testsuites>").map_err(|e| PummelError::Internal(e.to_string()))?;
 
         Ok(())
     }
@@ -135,7 +135,7 @@ impl Reporter for JUnitReporter {
         &self,
         definition: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         Self::generate_report(definition, stats)
     }
 }
@@ -186,7 +186,7 @@ impl InfluxDbReporter {
     pub async fn push_metrics(
         reporting: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         if reporting.module != "influxdb" {
             return Ok(());
         }
@@ -203,7 +203,7 @@ impl InfluxDbReporter {
             client
                 .query(point)
                 .await
-                .map_err(|e| BztError::Internal(format!("InfluxDB push failed: {e}")))?;
+                .map_err(|e| PummelError::Internal(format!("InfluxDB push failed: {e}")))?;
         }
 
         tracing::info!("[INFLUX] Pushed {} points to {}", point_count, url);
@@ -214,7 +214,7 @@ impl InfluxDbReporter {
     pub async fn push_real_time_metrics(
         reporting: &ReportingDefinition,
         metrics: &RealTimeMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         if reporting.module != "influxdb" {
             return Ok(());
         }
@@ -251,7 +251,7 @@ impl InfluxDbReporter {
 
             let point = timestamp
                 .try_into_query("request_metrics_realtime")
-                .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
+                .map_err(|e| PummelError::Internal(format!("InfluxDB query build failed: {e}")))?
                 .add_tag("path", name.clone())
                 .add_tag("worker_id", get_worker_id())
                 .add_field("count", stats.count as i64)
@@ -265,14 +265,14 @@ impl InfluxDbReporter {
             client
                 .query(point)
                 .await
-                .map_err(|e| BztError::Internal(format!("InfluxDB real-time push failed: {e}")))?;
+                .map_err(|e| PummelError::Internal(format!("InfluxDB real-time push failed: {e}")))?;
         }
 
         Ok(())
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn generate_points(stats: &GooseMetrics) -> Result<Vec<influxdb::WriteQuery>, BztError> {
+    pub fn generate_points(stats: &GooseMetrics) -> Result<Vec<influxdb::WriteQuery>, PummelError> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -290,7 +290,7 @@ impl InfluxDbReporter {
 
             let point = timestamp
                 .try_into_query("request_metrics")
-                .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
+                .map_err(|e| PummelError::Internal(format!("InfluxDB query build failed: {e}")))?
                 .add_tag("path", name.clone())
                 .add_tag("method", format!("{:?}", agg.method).to_uppercase())
                 .add_tag("worker_id", get_worker_id())
@@ -305,7 +305,7 @@ impl InfluxDbReporter {
         // Add a global point
         let global_point = timestamp
             .try_into_query("test_summary")
-            .map_err(|e| BztError::Internal(format!("InfluxDB query build failed: {e}")))?
+            .map_err(|e| PummelError::Internal(format!("InfluxDB query build failed: {e}")))?
             .add_tag("worker_id", get_worker_id())
             .add_field(
                 "total_requests",
@@ -337,7 +337,7 @@ impl Reporter for InfluxDbReporter {
         &self,
         definition: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(Self::push_metrics(definition, stats))
         })
@@ -455,7 +455,7 @@ impl CliSummary {
     pub fn print(&self) {
         tracing::debug!("[CLI] Printing summary: {} endpoints", self.endpoints.len());
         println!("\n{}", "=".repeat(90));
-        println!("  BZT-RS LOAD TEST SUMMARY");
+        println!("  PUMMEL LOAD TEST SUMMARY");
         println!("{}", "=".repeat(90));
         println!(
             "  Duration: {}s  |  Max Users: {}  |  Total Requests: {}  |  Failures: {} ({:.1}%)",
@@ -505,7 +505,7 @@ impl Reporter for CliSummary {
         &self,
         _definition: &ReportingDefinition,
         stats: &GooseMetrics,
-    ) -> Result<(), BztError> {
+    ) -> Result<(), PummelError> {
         let summary = Self::from_metrics(stats);
         summary.print();
         Ok(())

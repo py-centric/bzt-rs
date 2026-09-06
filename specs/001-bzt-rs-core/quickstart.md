@@ -1,8 +1,8 @@
-# Quickstart: bzt-rs Core
+# Quickstart: pummel Core
 
 ## Running Your First Load Test
 
-`bzt-rs` allows you to run performance tests using standard Taurus configuration files or a simplified shorthand syntax.
+`pummel` allows you to run performance tests using standard Taurus configuration files or a simplified shorthand syntax.
 
 ### 1. Basic Taurus YAML (`test.yaml`)
 
@@ -24,12 +24,12 @@ scenarios:
 
 Run it:
 ```bash
-./bzt-rs test.yaml
+./pummel test.yaml
 ```
 
 ### 2. Shorthand TOML (`test.toml`)
 
-`bzt-rs` also supports a minimal "Shorthand" format in TOML:
+`pummel` also supports a minimal "Shorthand" format in TOML:
 
 ```toml
 [execution]
@@ -47,7 +47,7 @@ requests = [
 
 Run it:
 ```bash
-./bzt-rs test.toml
+./pummel test.toml
 ```
 
 ### 3. CLI Options
@@ -59,4 +59,4 @@ Run it:
 
 ### 4. Configuration Detection
 
-`bzt-rs` automatically detects the configuration format based on the file extension (`.yaml`, `.yml`, `.json`, `.toml`).
+`pummel` automatically detects the configuration format based on the file extension (`.yaml`, `.yml`, `.json`, `.toml`).

@@ -51,7 +51,7 @@
 
 **Goal**: Validate configuration syntax and dependencies without executing the test.
 
-**Independent Test**: Run `bzt-rs --dry-run config.yaml` and verify exit codes (0 for valid, 1 for invalid/missing files).
+**Independent Test**: Run `pummel --dry-run config.yaml` and verify exit codes (0 for valid, 1 for invalid/missing files).
 
 ### Tests for User Story 1 (MANDATORY - TDD) ⚠️
 
@@ -96,7 +96,7 @@
 
 **Goal**: Run a complete load test against an automatically managed mock server.
 
-**Independent Test**: Run `bzt-rs --mock-run config.yaml` and verify test passes against the internal mock.
+**Independent Test**: Run `pummel --mock-run config.yaml` and verify test passes against the internal mock.
 
 ### Tests for User Story 3 (MANDATORY - TDD) ⚠️
 
